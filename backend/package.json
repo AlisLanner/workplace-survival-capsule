@@ -1,5 +1,5 @@
 {
-  "name": "@workplace-survival-capsule/backend",
+  "name": "@llm-multi-agent-workplace-assessment-system/backend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.1",
+    "@langchain/langgraph": "^1.4.7",
     "@prisma/client": "^6.16.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

@@ -1,4 +1,44 @@
 export type AgentName = "leader" | "coworker" | "client";
+export type GraphNodeStatus = "pending" | "running" | "completed" | "skipped" | "failed";
+
+export interface AgentCapabilityCard {
+  name: string;
+  role: string;
+  visibleContext: string[];
+  handoffTargets: string[];
+  guardrails: string[];
+  outputSchema: string;
+}
+
+export interface AgentTraceEvent {
+  id: string;
+  sessionId: string;
+  runId: string;
+  nodeId: string;
+  agentName: string;
+  eventType: "node" | "handoff" | "guardrail" | "tool" | "error" | string;
+  status: GraphNodeStatus;
+  summary?: string | null;
+  payload?: Record<string, unknown> | null;
+  elapsedMs?: number | null;
+  sequence: number;
+  createdAt: string;
+}
+
+export interface AssessmentGraphState {
+  runId: string;
+  session: unknown;
+  scenario: unknown;
+  messages: unknown[];
+  userMessage: string;
+  blackboard: unknown;
+  directorResult?: DirectorResult;
+  groupResult?: GroupDiscussionResult | null;
+  activeAgent?: AgentName;
+  npcResult?: NpcResult;
+  report?: unknown;
+  traceEvents: AgentTraceEvent[];
+}
 
 export interface VisibleReply {
   speaker: string;

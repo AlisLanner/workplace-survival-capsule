@@ -5,7 +5,8 @@ import type {
   SessionDetail,
   StartAssessmentResponse,
   Report,
-  ReportProgressEvent
+  ReportProgressEvent,
+  AgentTraceEvent
 } from "../types/assessment";
 
 export function listScenarios() {
@@ -30,8 +31,69 @@ export function sendMessage(sessionId: string, content: string) {
   });
 }
 
+/**
+ * 报告可能来自不同版本的 Judge 输出（字段缺失、类型不符、旧版本落库），
+ * 渲染层大量依赖数组与对象字段，缺失会导致整页崩溃。
+ * 在 API 边界统一补齐，保证渲染层拿到的始终是完整结构。
+ */
+export function normalizeReport(raw: unknown): Report {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  const asRecord = <T,>(v: unknown): Record<string, T> =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, T>) : {};
+
+  const coverage = asRecord<unknown>(r.coverage_status);
+  const sampling = asRecord<unknown>(r.sampling_stats);
+  const hasCoverage = Object.keys(coverage).length > 0;
+  const hasSampling = Object.keys(sampling).length > 0;
+
+  const evidence = asArray<Record<string, unknown>>(r.evidence).map((item) => ({
+    dimension: typeof item?.dimension === "string" ? item.dimension : "",
+    quote: typeof item?.quote === "string" ? item.quote : "",
+    analysis: typeof item?.analysis === "string" ? item.analysis : ""
+  }));
+
+  const dimensionScores = asRecord<number>(r.dimension_scores);
+  const radar = asArray<Record<string, unknown>>(r.radar_chart_data).map((item) => ({
+    name: typeof item?.name === "string" ? item.name : "",
+    score: typeof item?.score === "number" ? item.score : 0,
+    max: typeof item?.max === "number" ? item.max : 20
+  }));
+
+  return {
+    ...(r as unknown as Report),
+    total_score: typeof r.total_score === "number" ? r.total_score : 0,
+    level: typeof r.level === "string" ? r.level : "无法评分",
+    dimension_scores: dimensionScores,
+    dimension_analysis: asRecord<string>(r.dimension_analysis),
+    conflict_style: typeof r.conflict_style === "string" ? r.conflict_style : "无法判断",
+    summary: typeof r.summary === "string" ? r.summary : "",
+    strengths: asArray<string>(r.strengths),
+    risks: asArray<string>(r.risks),
+    suggestions: asArray<string>(r.suggestions),
+    evidence,
+    radar_chart_data: radar,
+    final_recommendation: typeof r.final_recommendation === "string" ? r.final_recommendation : "",
+    calibration_issues: asArray<string>(r.calibration_issues),
+    coverage_status: hasCoverage
+      ? {
+          covered_dimensions: asArray<string>(coverage.covered_dimensions),
+          insufficient_dimensions: asArray<string>(coverage.insufficient_dimensions),
+          complete: Boolean(coverage.complete)
+        }
+      : undefined,
+    sampling_stats: hasSampling
+      ? {
+          scores: asArray<number>(sampling.scores),
+          variance: typeof sampling.variance === "number" ? sampling.variance : 0,
+          dim_variances: asRecord<number>(sampling.dim_variances)
+        }
+      : undefined
+  };
+}
+
 export function getReport(sessionId: string) {
-  return request<Report>(`/api/assessment/report/${sessionId}`);
+  return request<Report>(`/api/assessment/report/${sessionId}`).then(normalizeReport);
 }
 
 // ── Streaming sendMessage ───────────────────────────────
@@ -39,6 +101,8 @@ export function getReport(sessionId: string) {
 export interface StreamEvents {
   onSpeaker: (speaker: string, role: string) => void;
   onToken: (token: string) => void;
+  onAgentTrace?: (event: AgentTraceEvent) => void;
+  onHandoff?: (payload: Record<string, unknown>) => void;
   onJudging?: () => void;
   onReportProgress?: (progress: ReportProgressEvent) => void;
   onDone: (result: SendMessageResponse) => void;
@@ -117,6 +181,14 @@ export async function sendMessageStream(
             }
           } else if (currentEvent === "judging") {
             events.onJudging?.();
+          } else if (currentEvent === "agent_trace") {
+            if (parsed && typeof parsed === "object" && "nodeId" in parsed && "status" in parsed) {
+              events.onAgentTrace?.(parsed as AgentTraceEvent);
+            }
+          } else if (currentEvent === "handoff") {
+            if (parsed && typeof parsed === "object") {
+              events.onHandoff?.(parsed as Record<string, unknown>);
+            }
           } else if (currentEvent === "report_progress") {
             if (parsed && typeof parsed === "object" && "stage" in parsed && "message" in parsed) {
               const progress = parsed as Partial<ReportProgressEvent>;

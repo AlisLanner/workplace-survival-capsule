@@ -34,25 +34,28 @@ export function AdminGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="page-shell" style={{ display: "grid", placeItems: "center", minHeight: "calc(100dvh - 120px)" }}>
-      <form onSubmit={handleSubmit} className="card" style={{ maxWidth: 400, padding: 32, display: "grid", gap: 16 }}>
-        <div>
-          <span className="section-label">Admin Access</span>
-          <h2 style={{ margin: "8px 0 0", fontFamily: "var(--font-display)", fontSize: "1.3rem" }}>管理后台登录</h2>
-        </div>
-        <p style={{ color: "var(--muted)", fontSize: "0.92rem", lineHeight: 1.6, margin: 0 }}>
-          请输入管理员密钥以访问后台。如果你还没有密钥，请联系系统管理员。
-        </p>
-        <input
-          type="password"
-          value={input}
-          onChange={(e) => { setInput(e.target.value); setError(false); }}
-          placeholder="管理员密钥"
-          style={{ borderColor: error ? "var(--red)" : undefined }}
-          autoFocus
-        />
-        {error ? <span style={{ color: "var(--red)", fontSize: "0.85rem" }}>请输入密钥</span> : null}
-        <button type="submit" className="btn-primary" style={{ width: "100%" }}>
+    <main className="admin-gate">
+      <form onSubmit={handleSubmit} className="glass">
+        <span className="kicker">Admin Access</span>
+        <h2 className="h2">管理后台</h2>
+        <p className="muted">输入管理员密钥进入后台。</p>
+        <label className="f-label">
+          密钥
+          <input
+            className="f-input"
+            type="password"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              setError(false);
+            }}
+            placeholder="管理员密钥"
+            style={{ borderColor: error ? "var(--bad)" : undefined }}
+            autoFocus
+          />
+        </label>
+        {error ? <span className="small" style={{ color: "var(--bad)" }}>请输入密钥</span> : null}
+        <button type="submit" className="btn btn-gold">
           进入后台
         </button>
       </form>

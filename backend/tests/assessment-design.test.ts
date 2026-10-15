@@ -3,7 +3,11 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 import { buildNpcMemoryState } from "../src/agents/npc.agent";
 import { createInitialBlackboard } from "../src/services/blackboard.service";
-import { buildFallbackNpcInstruction, resolveGroupDiscussionCorrection } from "../src/services/orchestrator.service";
+import {
+  buildFallbackNpcInstruction,
+  normalizeDirectorResult,
+  resolveGroupDiscussionCorrection
+} from "../src/services/orchestrator.service";
 import { getScenarioRubric } from "../src/services/rubric.service";
 import { mockDeepSeekResponse } from "../src/services/mockLlm.service";
 import { shouldForceGroupDiscussion } from "../src/utils/groupDiscussionTrigger";
@@ -45,6 +49,19 @@ describe("assessment design", () => {
     expect(blackboard.conversation_control.last_active_agent).toBe("leader");
   });
 
+  it("initializes the first-week entry-level scenario with entry-level dimensions", () => {
+    const blackboard = createInitialBlackboard(10, "first_week_assignment");
+
+    expect(blackboard.scenario_facts.user_role).toContain("运营组入职第一周");
+    expect(blackboard.scenario_facts.capability_dimensions).toEqual(["需求澄清", "优先级判断", "横向协作", "诚实沟通", "边界表达", "向上同步", "压力表达", "担当推进"]);
+    expect(blackboard.scenario_facts.agent_profiles.leader.name).toBe("许主管");
+    expect(blackboard.scenario_facts.agent_profiles.coworker.name).toBe("大周");
+    expect(blackboard.scenario_facts.agent_profiles.client.name).toBe("方姐");
+    expect(getScenarioRubric("first_week_assignment").requiredElements).toContain("需求口径与截止确认");
+    expect(blackboard.unresolved_items).toContain("需求口径与数据权限未确认");
+    expect(blackboard.coverage_state?.slots ? Object.keys(blackboard.coverage_state.slots).length : 0).toBe(16);
+  });
+
   it("builds fallback NPC rotation instructions from the active scenario facts", () => {
     const demoBlackboard = createInitialBlackboard(10, "project_demo_crisis");
     const restaurantBlackboard = createInitialBlackboard(10, "coffee_shop_complaint");
@@ -76,6 +93,20 @@ describe("assessment design", () => {
     expect(restaurantInstruction).toContain("江师傅");
     expect(restaurantInstruction).not.toContain("退款规则未确认");
     expect(restaurantInstruction).not.toContain("前厅后厨流程方案未确认");
+  });
+
+  it("normalizes incomplete Director output before the NPC node runs", () => {
+    const blackboard = createInitialBlackboard(10, "project_demo_crisis");
+
+    const normalized = normalizeDirectorResult({ active_agent: "client" }, blackboard);
+
+    expect(normalized.active_agent).toBe("client");
+    expect(normalized.phase).toBe(blackboard.phase);
+    expect(normalized.pressure_level).toBe(blackboard.pressure_level);
+    expect(normalized.current_focus).toBe(blackboard.current_focus);
+    expect(normalized.npc_instruction).toContain("小秋");
+    expect(normalized.npc_instruction).toContain("不提示标准答案");
+    expect(normalized.dimension_evidence).toEqual([]);
   });
 
   it("extracts NPC memory into explicit tone state", () => {
@@ -151,9 +182,9 @@ describe("assessment design", () => {
     const seed = readRepoFile("prisma/seed.ts");
     const assessmentService = readRepoFile("src/services/assessment.service.ts");
 
-    expect(seed).toContain("下午4点VP陈总要向CEO做Q3方案汇报");
-    expect(seed).toContain("汇报负责人、协作资源方和具体执行者会从不同角度追问你的判断");
-    expect(seed).toContain("客人、后厨学徒和后厨主管会从不同角度追问你的处理");
+    expect(seed).toContain("下午 1:30，距 4 点汇报还有两个半小时");
+    expect(seed).toContain("数据齐了、框架有了，唯独没法上会");
+    expect(seed).toContain("刘总在等一个说法");
     expect(seed).toContain("openingMessageJson");
     expect(seed).toContain("initialBlackboardJson");
     expect(seed).not.toContain("你是谁：");

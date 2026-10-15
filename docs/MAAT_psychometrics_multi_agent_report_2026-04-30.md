@@ -1,14 +1,14 @@
-# 基于生成式大模型 Multi-Agent 的职场情境能力评估系统研究报告
+# 基于LLM Multi-Agent的职场情境能力评估系统研究报告
 
 **心理测量学取向 · 项目复核版**
 
 **报告日期：** 2026 年 4 月 30 日
 
-**项目：** workplace-survival-capsule / MAAT
+**项目：** llm-multi-agent-workplace-assessment-system / MAAT
 
 ## 项目概述
 
-本报告依据 workplace-survival-capsule 项目的当前代码、提示词、数据模型、前端页面和测试文件重新整理。系统中文定位为“基于生成式大模型 Multi-Agent 的职场情境能力评估系统”，产品语境可称为 MAAT（Multi-Agent Assessment Toolkit）。从现有实现看，它更适合被界定为情境模拟反馈诊断工具：通过多角色压力情境收集受测者的自然语言作答，抽取可观察行为证据，再形成参考指数、观察区间、证据链和发展建议。
+本报告依据 llm-multi-agent-workplace-assessment-system 项目的当前代码、提示词、数据模型、前端页面和测试文件重新整理。系统中文定位为“基于LLM Multi-Agent的职场情境能力评估系统”，产品语境可称为 MAAT（Multi-Agent Assessment Toolkit）。从现有实现看，它更适合被界定为情境模拟反馈诊断工具：通过多角色压力情境收集受测者的自然语言作答，抽取可观察行为证据，再形成参考指数、观察区间、证据链和发展建议。
 
 项目已具备完整的前后端链路。后端使用 Express、TypeScript、Prisma 和 SQLite，核心测评流程由 assessment.service 与 orchestrator.service 驱动；前端使用 React、TypeScript、Vite 和 Recharts，支持情境选择、SSE 流式对话、报告展示和管理后台。当前种子数据包含两个场景：一是“周三下午的会议室”，受测者在 120 分钟窗口内处理 VP 汇报前的设计稿缺口、协作资源和新人执行边界；二是“8号桌的客人”，受测者以餐厅值班经理身份处理重要客人宴请中的出品事故、员工纠错和后厨协同。
 

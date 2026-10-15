@@ -57,7 +57,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "workplace-survival-capsule-backend" });
+  res.json({ ok: true, service: "llm-multi-agent-workplace-assessment-system-backend" });
 });
 
 app.get("/debug/log-path", (_req, res) => {

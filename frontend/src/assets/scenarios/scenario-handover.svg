@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1216 756" role="img" aria-label="接手的第三周">
+  <rect width="1216" height="756" fill="#0B0C10"/>
+  <defs>
+    <linearGradient id="hGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EBCF8F"/>
+      <stop offset="1" stop-color="#C9A453"/>
+    </linearGradient>
+    <linearGradient id="hTeal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5BD8C2"/>
+      <stop offset="1" stop-color="#3E8E7E"/>
+    </linearGradient>
+  </defs>
+  <!-- kanban board -->
+  <g stroke="rgba(255,255,255,.12)" fill="rgba(255,255,255,.03)">
+    <rect x="220" y="160" width="776" height="436" rx="18"/>
+  </g>
+  <g stroke="rgba(255,255,255,.10)" fill="none">
+    <line x1="478" y1="200" x2="478" y2="560"/>
+    <line x1="738" y1="200" x2="738" y2="560"/>
+  </g>
+  <!-- columns -->
+  <g font-family="Space Grotesk,Noto Sans SC,sans-serif" font-size="20" letter-spacing=".16em">
+    <text x="260" y="232" fill="rgba(255,255,255,.55)">待确认</text>
+    <text x="520" y="232" fill="rgba(255,255,255,.55)">进行中</text>
+    <text x="780" y="232" fill="rgba(255,255,255,.55)">已承诺</text>
+  </g>
+  <!-- cards: backlog column -->
+  <g fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.14)">
+    <rect x="248" y="262" width="200" height="54" rx="9"/>
+    <rect x="248" y="330" width="200" height="54" rx="9"/>
+    <rect x="248" y="398" width="200" height="54" rx="9"/>
+    <rect x="248" y="466" width="200" height="54" rx="9"/>
+  </g>
+  <!-- in-progress cards with teal accent -->
+  <g fill="rgba(91,216,194,.06)" stroke="rgba(91,216,194,.4)">
+    <rect x="508" y="262" width="200" height="54" rx="9"/>
+    <rect x="508" y="330" width="200" height="54" rx="9"/>
+  </g>
+  <!-- committed: gold outline, one red flag -->
+  <g fill="rgba(227,195,126,.07)" stroke="rgba(227,195,126,.45)">
+    <rect x="768" y="262" width="200" height="54" rx="9"/>
+  </g>
+  <path d="M868 330 h-60 v24 h60 z" fill="rgba(224,101,91,.14)" stroke="rgba(224,101,91,.5)"/>
+  <!-- handoff: papers + pen -->
+  <g transform="translate(1060,300)">
+    <g fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.16)">
+      <rect x="0" y="0" width="96" height="126" rx="6" transform="rotate(-4)"/>
+      <rect x="14" y="18" width="96" height="126" rx="6" transform="rotate(5)"/>
+    </g>
+    <line x1="30" y1="46" x2="104" y2="40" stroke="#E3C37E" stroke-width="3" stroke-linecap="round"/>
+    <line x1="34" y1="70" x2="108" y2="64" stroke="rgba(255,255,255,.3)" stroke-width="2" stroke-linecap="round"/>
+    <line x1="34" y1="90" x2="104" y2="85" stroke="rgba(255,255,255,.2)" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <!-- calendar: 3 days -->
+  <g font-family="Space Grotesk,sans-serif">
+    <rect x="180" y="620" width="240" height="70" rx="12" fill="none" stroke="url(#hGold)" stroke-width="2.5"/>
+    <text x="196" y="668" fill="#E3C37E" font-size="26" font-weight="600" letter-spacing=".08em">D-3 评审</text>
+  </g>
+  <circle cx="880" cy="656" r="46" fill="none" stroke="url(#hTeal)" stroke-width="2.5"/>
+  <text x="880" y="672" text-anchor="middle" fill="#5BD8C2" font-size="30" font-weight="600">三周</text>
+</svg>

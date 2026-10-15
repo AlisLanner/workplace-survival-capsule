@@ -1,7 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { listScenarios, startAssessment } from "../api/assessment.api";
-import { getScenarioPresentation, getScenarioSceneStyle } from "../config/scenarioPresentation";
+import { getScenarioPresentation } from "../config/scenarioPresentation";
+import { useReveal } from "../hooks/useReveal";
+import { useSpotlight } from "../hooks/useSpotlight";
 import type { Scenario } from "../types/assessment";
 
 const NICKNAME_KEY = "maat_nickname";
@@ -31,12 +34,45 @@ export function ScenarioPage() {
   const [nickname, setNickname] = useState(getStoredNickname);
   const [nicknameError, setNicknameError] = useState(false);
 
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  useSpotlight();
+
+  const kickerRef = useReveal<HTMLSpanElement>();
+  const titleRef = useReveal<HTMLHeadingElement>();
+  const descRef = useReveal<HTMLParagraphElement>();
+  const nickRef = useReveal<HTMLDivElement>();
+
   useEffect(() => {
     listScenarios()
       .then(setScenarios)
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Cards render after the async fetch; observe them once data is in so the
+  // reveal system (same thresholds as useReveal) applies to each card.
+  useEffect(() => {
+    if (!scenarios.length) return;
+    const els = Array.from(gridRef.current?.querySelectorAll<HTMLElement>("[data-reveal]") ?? []);
+    if (!els.length) return;
+    if (typeof IntersectionObserver === "undefined") {
+      els.forEach((el) => el.classList.add("in"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            io.unobserve(entry.target);
+          }
+        }
+      },
+      { threshold: 0.12 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [scenarios]);
 
   function handleNicknameChange(value: string) {
     setNickname(value);
@@ -66,60 +102,82 @@ export function ScenarioPage() {
   }
 
   return (
-    <main className="page-shell case-wall">
-      <div className="page-heading">
-        <span className="section-label">Assessment Scenarios</span>
-        <h1>选择情境档案</h1>
-        <p>
-          每份档案对应一个真实职场压力场景。系统会指派多名 Agent 轮番追问，
-          Orchestrator Agent 根据你的回答选择下一轮追问对象与压力点。没有预设正确答案，没有固定剧本。
+    <main className="wrap page">
+      <div className="page-head">
+        <span className="kicker" ref={kickerRef} data-reveal>
+          SCENARIOS · 评估情境
+        </span>
+        <h1 className="h1" ref={titleRef} data-reveal style={{ "--d": ".08s" } as CSSProperties}>
+          选择一个情境，进入评估
+        </h1>
+        <p className="muted" ref={descRef} data-reveal style={{ "--d": ".16s" } as CSSProperties}>
+          每个情境都是一段高压现场：限定轮次内与多个角色对话，系统全程记录你的原话作为评估证据。
         </p>
       </div>
 
-      {loading ? <p className="loading-state">加载场景中...</p> : null}
-      {error ? <p className="error-box">{error}</p> : null}
-
-      <div className={`nickname-bar ${nicknameError ? "nickname-bar-error" : ""}`}>
-        <label htmlFor="nickname">
-          你的昵称
-        </label>
+      <div className="nickname-bar glass" data-reveal ref={nickRef}>
+        <label htmlFor="nickname">你的昵称</label>
         <input
           id="nickname"
           type="text"
           value={nickname}
           onChange={(e) => handleNicknameChange(e.target.value)}
-          placeholder="输入你在测评中显示的名字"
+          placeholder="评估中显示的名字"
           maxLength={16}
         />
-        {nicknameError ? (
-          <span>请先输入昵称</span>
-        ) : null}
+        {nicknameError ? <span className="nickname-error">请先输入昵称</span> : null}
       </div>
+      <p className="nickname-hint">昵称用于区分会话记录</p>
 
-      <div className="scenario-grid">
-        {scenarios.map((scenario) => {
+      {loading ? <p className="loading">加载评估情境中…</p> : null}
+      {error ? <p className="error-box">{error}</p> : null}
+
+      <div className="scn-grid" ref={gridRef}>
+        {scenarios.map((scenario, i) => {
           const presentation = getScenarioPresentation(scenario);
+          const opening = scenario.openingMessage;
 
           return (
             <article
-              className="scenario-card"
               key={scenario.id}
-              style={getScenarioSceneStyle(scenario)}
+              className="glass scn-card spot"
+              data-reveal
+              style={{ "--d": `${0.1 + i * 0.1}s` } as CSSProperties}
             >
-              <div className="case-label">SCENARIO FILE</div>
-              <div>
-                <div className="scenario-card-top">
-                  <span className="tech-label">{presentation.badge}</span>
-                  <span className="data-badge">{scenario.maxRound} 轮上限</span>
-                </div>
-                <h2>{scenario.title}</h2>
-                <p>{scenario.description}</p>
+              <div className="scn-cover">
+                <img src={presentation.backgroundImage} alt={scenario.title} />
+                <span className="tagline">SCENARIO {String(i + 1).padStart(2, "0")}</span>
               </div>
-              <div className="scenario-foot">
-                <span>{presentation.tagline}</span>
-                <button disabled={startingId === scenario.id} onClick={() => start(scenario.id)}>
-                  {startingId === scenario.id ? "启动中..." : "开始测评"}
-                </button>
+              <div className="scn-body">
+                <h3 className="h3">{scenario.title}</h3>
+                <div className="scn-meta">
+                  <span className="chip">{scenario.maxRound} 轮</span>
+                  <span className="chip">群聊机制</span>
+                  <span className="chip">{presentation.badge}</span>
+                </div>
+                <p className="muted small">{scenario.description}</p>
+                <div className="task">
+                  <b>任务卡 — </b>
+                  {scenario.backgroundForUser}
+                </div>
+                {opening ? (
+                  <div className="opening">
+                    <span className="who">
+                      开场 · {opening.speaker}（{opening.role}）
+                    </span>
+                    “{opening.content}”
+                  </div>
+                ) : null}
+                <div className="scn-foot">
+                  <span className="small muted">多角色追问 · 保留原话</span>
+                  <button
+                    className="btn btn-gold"
+                    disabled={startingId === scenario.id}
+                    onClick={() => start(scenario.id)}
+                  >
+                    {startingId === scenario.id ? "启动中…" : "开始评估"}
+                  </button>
+                </div>
               </div>
             </article>
           );
@@ -128,4 +186,3 @@ export function ScenarioPage() {
     </main>
   );
 }
-

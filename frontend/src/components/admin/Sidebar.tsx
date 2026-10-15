@@ -9,8 +9,8 @@ const links = [
 
 export function Sidebar() {
   return (
-    <aside className="admin-sidebar">
-      <div className="admin-brand">Assessment Ops</div>
+    <aside className="aside">
+      <span className="ab">ASSESSMENT OPS</span>
       <nav>
         {links.map(([to, label]) => (
           <NavLink key={to} to={to} end={to === "/admin"}>

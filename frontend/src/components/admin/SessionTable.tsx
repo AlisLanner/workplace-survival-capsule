@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { AdminSession } from "../../types/admin";
 
 const statusLabel: Record<string, string> = {
@@ -21,13 +21,13 @@ export function SessionTable({ sessions }: { sessions: AdminSession[] }) {
     return (
       <div className="empty-state">
         <strong>没有符合条件的会话</strong>
-        <span>调整搜索、状态或场景筛选后再查看。</span>
+        <span>调整筛选后再查看。</span>
       </div>
     );
   }
 
   return (
-    <div className="table-wrap">
+    <div className="tbl-wrap glass">
       <table>
         <thead>
           <tr>
@@ -44,11 +44,13 @@ export function SessionTable({ sessions }: { sessions: AdminSession[] }) {
           {sessions.map((session) => (
             <tr key={session.id}>
               <td>
-                <Link to={`/admin/sessions/${session.id}`}>{session.id.slice(0, 8)}</Link>
+                <Link className="t-id" to={`/admin/sessions/${session.id}`}>
+                  {session.id.slice(0, 8)}
+                </Link>
               </td>
               <td>{session.scenario.title}</td>
               <td>
-                <span className={`status-pill status-pill-${session.status}`}>
+                <span className={`st-pill st-${session.status}`}>
                   {statusLabel[session.status] ?? session.status}
                 </span>
               </td>
@@ -56,7 +58,7 @@ export function SessionTable({ sessions }: { sessions: AdminSession[] }) {
               <td>{session.totalScore ?? "-"}</td>
               <td>{formatDate(session.startedAt)}</td>
               <td>
-                <Link className="table-action" to={`/admin/sessions/${session.id}`}>
+                <Link className="t-link" to={`/admin/sessions/${session.id}`}>
                   查看
                 </Link>
               </td>
@@ -67,4 +69,3 @@ export function SessionTable({ sessions }: { sessions: AdminSession[] }) {
     </div>
   );
 }
-

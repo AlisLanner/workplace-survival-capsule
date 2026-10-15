@@ -67,6 +67,7 @@ export async function sendMessageStreamController(req: Request, res: Response) {
 data: ${JSON.stringify(data)}
 
 `);
+    (res as Response & { flush?: () => void }).flush?.();
   };
 
   const stopReportProgressHeartbeat = () => {
@@ -95,19 +96,19 @@ data: ${JSON.stringify(data)}
   };
 
   const safeEnd = () => {
-    if (!closed) {
-      closed = true;
-      stopReportProgressHeartbeat();
-      try { res.end(); } catch { /* already closed */ }
-    }
+    stopReportProgressHeartbeat();
+    if (res.writableEnded || res.destroyed) return;
+    closed = true;
+    try { res.end(); } catch { /* already closed */ }
   };
 
-  req.on("close", () => {
+  res.on("close", () => {
     closed = true;
     stopReportProgressHeartbeat();
   });
 
   res.flushHeaders?.();
+  sendSSE("open", { ok: true });
 
   await sendAssessmentMessageStreaming(req.body.session_id, req.body.content ?? "", {
     onSpeaker: (speaker, role) => {
@@ -115,6 +116,12 @@ data: ${JSON.stringify(data)}
     },
     onToken: (token) => {
       sendSSE("token", token);
+    },
+    onAgentTrace: (event) => {
+      sendSSE("agent_trace", event);
+      if (event.eventType === "handoff" && event.payload && typeof event.payload === "object") {
+        sendSSE("handoff", event.payload);
+      }
     },
     onJudging: () => {
       reportProgressStartedAt = Date.now();

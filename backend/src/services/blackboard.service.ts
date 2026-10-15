@@ -123,6 +123,15 @@ export function createInitialBlackboard(maxRound = 15, scenarioId = "project_dem
   if (scenarioId === "coffee_shop_complaint") {
     return createRestaurantComplaintBlackboard(maxRound);
   }
+  if (scenarioId === "promo_outage_crisis") {
+    return createPromoOutageBlackboard(maxRound);
+  }
+  if (scenarioId === "handover_review_crisis") {
+    return createHandoverReviewBlackboard(maxRound);
+  }
+  if (scenarioId === "first_week_assignment") {
+    return createFirstWeekAssignmentBlackboard(maxRound);
+  }
 
   return {
     round: 0,
@@ -353,6 +362,355 @@ function createRestaurantComplaintBlackboard(maxRound: number): Blackboard {
     },
     group_discussion_summary: {},
     coverage_state: createInitialCoverageState("coffee_shop_complaint")
+  };
+}
+
+function createPromoOutageBlackboard(maxRound: number): Blackboard {
+  return {
+    round: 0,
+    min_round: 8,
+    max_round: maxRound,
+    phase: "promo_outage_opening",
+    pressure_level: 4,
+    current_focus: "同时处理恢复现场、对外口径、客服边界和复盘责任",
+    scenario_facts: {
+      user_role: "值班负责人，零点大促支付通道大面积超时，需要先恢复现场、稳住对外口径，再谈根因与复盘。",
+      project: "零点大促开始 20 分钟，支付通道大面积超时，工单在群里刷屏，系统仍在降级运行。",
+      demo_time: "零点大促进行中",
+      current_time: "大促开始 20 分钟，支付通道大面积超时，每分钟都有用户在流失",
+      known_facts: [
+        "零点大促开始 20 分钟，支付通道出现大面积超时，工单在群里刷屏。",
+        "系统仍在降级运行，每分钟都有用户在流失。",
+        "王总盯着大屏要判断，需要恢复优先级和时间表。",
+        "小郑被用户直接质问，需要统一话术与支持。",
+        "老周在排查，但没有人告诉他业务影响面和恢复优先级。"
+      ],
+      unknowns: [
+        "根因定位需要多久未知。",
+        "支付通道恢复的具体时间未知。",
+        "对外口径的授权边界未知。"
+      ],
+      completed_features: ["故障已定位为支付通道超时", "系统降级运行中，未完全宕机"],
+      at_risk_features: ["用户流失速度", "客服承压状态", "对外口径一致性", "复盘与防复发机制"],
+      capability_dimensions: ["利害识别", "现场止损", "规则边界", "承诺边界", "体面修复", "员工修复", "跨团队协同", "系统改进"],
+      agent_profiles: {
+        leader: {
+          name: "王总",
+          role: "运营总监",
+          concern: "恢复优先级、时间表和对外承诺边界"
+        },
+        coworker: {
+          name: "小郑",
+          role: "客服专员",
+          concern: "被用户质问，需要统一话术、承诺边界和支持"
+        },
+        client: {
+          name: "老周",
+          role: "研发负责人",
+          concern: "业务影响面、恢复优先级和跨团队信息同步"
+        }
+      }
+    },
+    user_progress: {
+      identified_core_flow: false,
+      clarified_scope: false,
+      separated_must_have_from_optional: false,
+      asked_clarifying_questions: false,
+      used_given_facts: false,
+      stated_assumptions: false,
+      proposed_viable_alternative: false,
+      gave_owner: false,
+      gave_timeline: false,
+      gave_risk_plan: false,
+      handled_coworker_conflict: false,
+      managed_client_expectation: false,
+      final_plan_complete: false
+    },
+    latest_user_behavior: {
+      over_promise: false,
+      blame_shifting: false,
+      avoidance: false,
+      premature_solution: false,
+      unsupported_assumption: false,
+      honest_risk_with_fallback: false,
+      takes_ownership: false,
+      pressure_resistant: false
+    },
+    unresolved_items: [
+      "恢复优先级未确认",
+      "对外口径未定",
+      "客服话术边界未定",
+      "复盘责任未定"
+    ],
+    npc_memory: {
+      leader: {
+        trust: 2,
+        pressure: 4,
+        last_concern: "恢复优先级和时间表仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "press_for_priority_and_timeline"
+      },
+      coworker: {
+        cooperation: 2,
+        defensiveness: 3,
+        last_concern: "话术边界与支持仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "request_script_and_support"
+      },
+      client: {
+        trust: 2,
+        anxiety: 4,
+        last_concern: "业务影响面和恢复优先级仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "probe_impact_scope_and_priority"
+      }
+    },
+    evaluation_notes: {
+      strengths: [],
+      risks: [],
+      evidence: []
+    },
+    conversation_control: {
+      last_active_agent: "leader",
+      suggested_next_agent: "leader",
+      trigger_group_discussion: false,
+      should_finish: false,
+      finish_reason: ""
+    },
+    group_discussion_summary: {},
+    coverage_state: createInitialCoverageState("promo_outage_crisis")
+  };
+}
+
+function createHandoverReviewBlackboard(maxRound: number): Blackboard {
+  return {
+    round: 0,
+    min_round: 8,
+    max_round: maxRound,
+    phase: "handover_review_opening",
+    pressure_level: 3,
+    current_focus: "同时处理历史承诺真实性、评审口径、老员工协作和新人接手范围",
+    scenario_facts: {
+      user_role: "项目组新负责人，接手第三周，三天后季度评审，需要收敛出能上会的真实状态。",
+      project: "空降接手项目组第三周，上一任留下一堆口头承诺和一张没人维护的看板，三天后是季度评审。",
+      demo_time: "三天后季度评审",
+      current_time: "接手第三周，距离季度评审还有三天",
+      known_facts: [
+        "上一任留下一堆口头承诺和一张没人维护的看板。",
+        "三天后是季度评审，梁总要能上会的状态。",
+        "老郑在这个组七年，对新负责人还不多话。",
+        "小楠接了一堆说不清的活，不敢来问。"
+      ],
+      unknowns: [
+        "历史承诺里哪些是实数、哪些是虚的未知。",
+        "老郑愿意配合到什么程度未知。",
+        "小楠接手的具体范围未知。"
+      ],
+      completed_features: ["口头承诺清单已收集", "看板状态已导出"],
+      at_risk_features: ["历史承诺真实性", "评审口径", "老员工信任", "新人接手边界"],
+      capability_dimensions: ["信息辨别", "交付切分", "备选方案", "承诺边界", "向上对齐", "横向协商", "新人赋能", "压力表达"],
+      agent_profiles: {
+        leader: {
+          name: "梁总",
+          role: "事业部VP",
+          concern: "可上会状态：哪些是实数、哪些是虚的，owner 和风险"
+        },
+        coworker: {
+          name: "老郑",
+          role: "资深员工",
+          concern: "观察新负责人怎么对待老组员，防被当枪使"
+        },
+        client: {
+          name: "小楠",
+          role: "新入职成员",
+          concern: "接手范围、边界和反馈节奏"
+        }
+      }
+    },
+    user_progress: {
+      identified_core_flow: false,
+      clarified_scope: false,
+      separated_must_have_from_optional: false,
+      asked_clarifying_questions: false,
+      used_given_facts: false,
+      stated_assumptions: false,
+      proposed_viable_alternative: false,
+      gave_owner: false,
+      gave_timeline: false,
+      gave_risk_plan: false,
+      handled_coworker_conflict: false,
+      managed_client_expectation: false,
+      final_plan_complete: false
+    },
+    latest_user_behavior: {
+      over_promise: false,
+      blame_shifting: false,
+      avoidance: false,
+      premature_solution: false,
+      unsupported_assumption: false,
+      honest_risk_with_fallback: false,
+      takes_ownership: false,
+      pressure_resistant: false
+    },
+    unresolved_items: [
+      "历史承诺真实性未确认",
+      "评审口径未定",
+      "老郑协作条件未确认",
+      "小楠接手范围未定"
+    ],
+    npc_memory: {
+      leader: {
+        trust: 2,
+        pressure: 3,
+        last_concern: "评审口径和事实依据仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "press_for_facts_and_owner"
+      },
+      coworker: {
+        cooperation: 1,
+        defensiveness: 4,
+        last_concern: "新负责人怎么对待老组员仍在观察",
+        observed_user_signal: "not_observed",
+        response_mode: "observe_and_set_boundary"
+      },
+      client: {
+        trust: 2,
+        anxiety: 4,
+        last_concern: "接手范围和反馈节奏仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "request_boundary_and_feedback"
+      }
+    },
+    evaluation_notes: {
+      strengths: [],
+      risks: [],
+      evidence: []
+    },
+    conversation_control: {
+      last_active_agent: "leader",
+      suggested_next_agent: "leader",
+      trigger_group_discussion: false,
+      should_finish: false,
+      finish_reason: ""
+    },
+    group_discussion_summary: {},
+    coverage_state: createInitialCoverageState("handover_review_crisis")
+  };
+}
+
+function createFirstWeekAssignmentBlackboard(maxRound: number): Blackboard {
+  return {
+    round: 0,
+    min_round: 8,
+    max_round: maxRound,
+    phase: "first_week_assignment_opening",
+    pressure_level: 3,
+    current_focus: "入职第一周:确认需求口径、守住交付边界、拿到数据支持、对业务方兑现承诺",
+    scenario_facts: {
+      user_role: "运营组入职第一周的新人,周五前要给业务方一份渠道复盘报告,数据依赖数据组。",
+      project: "主管把跨部门需求交给新人:周五前出渠道复盘报告,数据要数据组的大周出,业务方方姐本周就要结果。",
+      demo_time: "周五下午两点交付初版",
+      current_time: "周一早上,距离周五交付还有四天",
+      known_facts: [
+        "周五下午两点是许主管给的初版截止,方姐本周就要结果。",
+        "报告需要数据组大周提供渠道数据,大周当前排期到下周。",
+        "新人系统权限只开了一半,数据口径没人完整讲过。",
+        "许主管说大周卡人就回来找他,但要求先自己把需求说清楚。"
+      ],
+      unknowns: [
+        "大周能挤出多少时间未知。",
+        "数据口径以哪版为准未知。",
+        "方姐对交付形式的接受边界未知。"
+      ],
+      completed_features: ["需求已被主管转达", "报告框架可自行搭建"],
+      at_risk_features: ["数据获取路径", "数据口径", "周五交付承诺", "业务方信任"],
+      capability_dimensions: ["需求澄清", "优先级判断", "横向协作", "诚实沟通", "边界表达", "向上同步", "压力表达", "担当推进"],
+      agent_profiles: {
+        leader: {
+          name: "许主管",
+          role: "部门主管",
+          concern: "周五交付能否兑现、新人是否先确认口径、卡住时会不会出声升级"
+        },
+        coworker: {
+          name: "大周",
+          role: "数据组资深",
+          concern: "需求是否写清楚、交换条件、数据口径责任归属"
+        },
+        client: {
+          name: "方姐",
+          role: "业务方对接人",
+          concern: "周五能拿到什么、新人靠不靠谱、数据源口径懂不懂"
+        }
+      }
+    },
+    user_progress: {
+      identified_core_flow: false,
+      clarified_scope: false,
+      separated_must_have_from_optional: false,
+      asked_clarifying_questions: false,
+      used_given_facts: false,
+      stated_assumptions: false,
+      proposed_viable_alternative: false,
+      gave_owner: false,
+      gave_timeline: false,
+      gave_risk_plan: false,
+      handled_coworker_conflict: false,
+      managed_client_expectation: false,
+      final_plan_complete: false
+    },
+    latest_user_behavior: {
+      over_promise: false,
+      blame_shifting: false,
+      avoidance: false,
+      premature_solution: false,
+      unsupported_assumption: false,
+      honest_risk_with_fallback: false,
+      takes_ownership: false,
+      pressure_resistant: false
+    },
+    unresolved_items: [
+      "需求口径与数据权限未确认",
+      "周五交付路径未确认",
+      "大周排期与交换条件未确认",
+      "方姐预期与交付边界未确认"
+    ],
+    npc_memory: {
+      leader: {
+        trust: 2,
+        pressure: 3,
+        last_concern: "新人是否先确认口径、分清主次,卡住时会不会出声",
+        observed_user_signal: "not_observed",
+        response_mode: "press_for_scope_and_escalation"
+      },
+      coworker: {
+        cooperation: 1,
+        defensiveness: 4,
+        last_concern: "需求文档化和口径责任仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "probe_requirement_documentation_and_exchange"
+      },
+      client: {
+        trust: 1,
+        anxiety: 5,
+        last_concern: "周五能拿到什么、新人是否靠谱仍未确认",
+        observed_user_signal: "not_observed",
+        response_mode: "press_for_deliverable_and_credibility"
+      }
+    },
+    evaluation_notes: {
+      strengths: [],
+      risks: [],
+      evidence: []
+    },
+    conversation_control: {
+      last_active_agent: "leader",
+      suggested_next_agent: "leader",
+      trigger_group_discussion: false,
+      should_finish: false,
+      finish_reason: ""
+    },
+    group_discussion_summary: {},
+    coverage_state: createInitialCoverageState("first_week_assignment")
   };
 }
 

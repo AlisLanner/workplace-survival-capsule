@@ -59,17 +59,39 @@ Group summary:
   const raw = await callDeepSeek({
     systemPrompt: judgePrompt,
     userPrompt: input,
-    model: process.env.DEEPSEEK_STRONG_MODEL,
+    model: process.env.DEEPSEEK_JUDGE_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_STRONG_MODEL,
     temperature: 0.1,
-    maxTokens: 8000,
+    maxTokens: 30000,
     jsonMode: true,
     thinking: true,
-    timeoutMs: 120000,
+    timeoutMs: 240000,
     allowMockFallback: false
   });
 
   try {
-    const report = safeParseJSON<JudgeReport>(raw);
+    let report: JudgeReport;
+    try {
+      report = safeParseJSON<JudgeReport>(raw);
+    } catch (parseError) {
+      // DeepSeek JSON Output 官方提示"有概率返回空 content 或非 JSON"。
+      // 单路采样解析失败时，用更强调 JSON 的修正提示词重试一次，避免该路直接失败拖垮整批采样。
+      log("warn", "Judge parse failed; retrying once with stricter JSON instruction", {
+        parseError: parseError instanceof Error ? parseError.message : String(parseError),
+        rawPreview: raw.slice(0, 500)
+      });
+      const retryRaw = await callDeepSeek({
+        systemPrompt: `${judgePrompt}\n\n请严格只输出上述 JSON 对象，不要输出任何说明、分析或 Markdown 代码块。`,
+        userPrompt: input,
+        model: process.env.DEEPSEEK_JUDGE_MODEL || process.env.DEEPSEEK_FAST_MODEL || process.env.DEEPSEEK_STRONG_MODEL,
+        temperature: 0.1,
+        maxTokens: 30000,
+        jsonMode: true,
+        thinking: false,
+        timeoutMs: 240000,
+        allowMockFallback: false
+      });
+      report = safeParseJSON<JudgeReport>(retryRaw);
+    }
     if (process.env.USE_MOCK_LLM === "true") {
       return {
         ...report,
@@ -143,7 +165,7 @@ function applyReliabilityGate(report: JudgeReport, totalVariance: number): Judge
   return {
     ...report,
     level: "待人工复核",
-    summary: `评分者间一致性不足，本次分数仅作为待复核草案，不应作为正式测评结论。${report.summary}`,
+    summary: `评分者间一致性不足，本次分数作为待复核草案。${report.summary}`,
     risks: ["评分者间一致性不足，分数稳定性不足。", ...(report.risks ?? [])],
     suggestions: ["重新采样或人工复核原始对话后，再确认正式分数。", ...(report.suggestions ?? [])],
     final_recommendation: `本次结果需要人工复核：${reason}。${report.final_recommendation}`,
@@ -162,7 +184,7 @@ function applyMockReportGate(report: JudgeReport): JudgeReport {
   return {
     ...report,
     level: "开发调试",
-    summary: `本报告为本地模拟输出，仅用于开发调试，不应作为正式测评结论。${report.summary}`,
+    summary: `本报告由本地 mock Judge 生成，用于开发调试。${report.summary}`,
     human_review_required: true,
     human_review_reason: reason,
     report_status: "debug"

@@ -15,6 +15,13 @@ type CallDeepSeekParams = {
 };
 
 type StreamCallback = (token: string) => void;
+const FALLBACK_STREAM_CHUNK_SIZE = 24;
+
+function emitTextChunks(text: string, onToken: StreamCallback, chunkSize = FALLBACK_STREAM_CHUNK_SIZE) {
+  for (let index = 0; index < text.length; index += chunkSize) {
+    onToken(text.slice(index, index + chunkSize));
+  }
+}
 
 // ── Prompt caching ─────────────────────────────────────
 // Wrap the system prompt in a content array so the model
@@ -32,6 +39,13 @@ function buildSystemMessage(systemPrompt: string) {
   ];
 }
 
+function ensureJsonInstruction(systemPrompt: string, userPrompt: string, jsonMode: boolean): string {
+  if (!jsonMode || /json/i.test(`${systemPrompt}\n${userPrompt}`)) {
+    return systemPrompt;
+  }
+  return `${systemPrompt}\n\nRespond with a JSON object only.`;
+}
+
 // ── Non-streaming call ─────────────────────────────────
 
 async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<string> {
@@ -46,10 +60,11 @@ async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<st
   const startedAt = Date.now();
 
   try {
+    const systemPrompt = ensureJsonInstruction(params.systemPrompt, params.userPrompt, params.jsonMode);
     const body: Record<string, unknown> = {
       model: params.model,
       messages: [
-        { role: "system", content: buildSystemMessage(params.systemPrompt) },
+        { role: "system", content: buildSystemMessage(systemPrompt) },
         { role: "user", content: params.userPrompt }
       ],
       temperature: params.temperature,
@@ -60,9 +75,9 @@ async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<st
     if (params.jsonMode) {
       body.response_format = { type: "json_object" };
     }
-    if (params.thinking) {
-      body.thinking = { type: "enabled" };
-    }
+    // thinking 默认值：仅当明确开启时启用推理；否则显式 disabled，避免思考模型误开思考
+    // （deepseek-v4-flash 在未传 thinking 时可能默认思考，导致 content 被 reasoning 占满）
+    body.thinking = params.thinking ? { type: "enabled" } : { type: "disabled" };
 
     log("info", "DeepSeek request started", {
       callId,
@@ -90,9 +105,12 @@ async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<st
     }
 
     const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ message?: { content?: string; reasoning_content?: string } }>;
     };
-    const content = data.choices?.[0]?.message?.content;
+    // deepseek-v4-flash 等思考模型可能把内容放在 reasoning_content、content 为空，
+    // 此时退化用 reasoning_content 提取（下游 safeParseJSON 会抓取最外层 JSON）。
+    const content =
+      data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || "";
     if (!content) {
       throw new Error(`Empty DeepSeek response: ${JSON.stringify(data)}`);
     }
@@ -127,12 +145,15 @@ export async function callDeepSeek({
       ? process.env.DEEPSEEK_STRONG_MODEL || process.env.DEEPSEEK_FAST_MODEL || "deepseek-v4-flash"
       : process.env.DEEPSEEK_FAST_MODEL || "deepseek-v4-flash");
   const useExplicitMock = process.env.USE_MOCK_LLM === "true";
-  const useMock = useExplicitMock || (!process.env.DEEPSEEK_API_KEY && allowMockFallback);
+  const hasApiKey = Boolean(process.env.DEEPSEEK_API_KEY);
+  // 用户已明确配置 API key（要真实 LLM）时，禁用 mock 降级——失败直接抛错，不静默转 mock。
+  // 仅在显式开启 mock，或完全未配置 key 且允许降级（教学演示）时才走 mock。
+  const useMock = useExplicitMock || (!hasApiKey && allowMockFallback);
 
   if (useMock) {
     return mockDeepSeekResponse(systemPrompt, userPrompt);
   }
-  if (!process.env.DEEPSEEK_API_KEY) {
+  if (!hasApiKey) {
     throw new Error("Missing DEEPSEEK_API_KEY");
   }
 
@@ -155,7 +176,8 @@ export async function callDeepSeek({
     try {
       return await requestDeepSeek(normalizedParams);
     } catch (retryError) {
-      if (!allowMockFallback) {
+      // 用户已配置 API key 时，禁止静默降级 mock——必须让失败可见，避免"真→假"割裂
+      if (hasApiKey || !allowMockFallback) {
         log("error", "DeepSeek retry failed; mock fallback disabled", { error: retryError });
         throw retryError;
       }
@@ -180,11 +202,9 @@ export async function streamDeepSeek({
   const useMock = process.env.USE_MOCK_LLM === "true" || !process.env.DEEPSEEK_API_KEY;
 
   if (useMock) {
-    // Mock: simulate streaming by yielding the full response token by token
+    // Mock: simulate streaming without flooding the SSE connection.
     const full = await mockDeepSeekResponse(systemPrompt, userPrompt);
-    for (const char of full) {
-      onToken(char);
-    }
+    emitTextChunks(full, onToken);
     return full;
   }
 
@@ -204,10 +224,11 @@ export async function streamDeepSeek({
   const startedAt = Date.now();
 
   try {
+    const systemPromptForRequest = ensureJsonInstruction(systemPrompt, userPrompt, jsonMode);
     const body: Record<string, unknown> = {
       model: selectedModel,
       messages: [
-        { role: "system", content: buildSystemMessage(systemPrompt) },
+        { role: "system", content: buildSystemMessage(systemPromptForRequest) },
         { role: "user", content: userPrompt }
       ],
       temperature,
@@ -215,6 +236,10 @@ export async function streamDeepSeek({
       stream: true,
       stream_options: { include_usage: true }
     };
+
+    // 关键：流式调用也必须显式关闭思考，否则 deepseek-v4-flash 默认思考，
+    // 返回的是 reasoning_content（思考文本）而非 JSON content，导致下游解析失败降级 mock。
+    body.thinking = { type: "disabled" };
 
     if (jsonMode) {
       body.response_format = { type: "json_object" };
@@ -266,7 +291,10 @@ export async function streamDeepSeek({
 
         try {
           const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta?.content;
+          const msg = parsed.choices?.[0]?.delta || {};
+          // 思考已在请求中禁用（body.thinking = disabled），content 即标准 JSON。
+          // 不取 reasoning_content——那是思考文本，拼接后不是合法 JSON，会导致解析失败。
+          const delta = msg.content;
           if (delta) {
             fullContent += delta;
             onToken(delta);
@@ -287,9 +315,7 @@ export async function streamDeepSeek({
     clearTimeout(timeout);
     // Fall back to non-streaming
     const full = await callDeepSeek({ systemPrompt, userPrompt, model, temperature, maxTokens, jsonMode, timeoutMs });
-    for (const char of full) {
-      onToken(char);
-    }
+    emitTextChunks(full, onToken);
     return full;
   } finally {
     clearTimeout(timeout);

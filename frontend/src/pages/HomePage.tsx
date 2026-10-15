@@ -1,163 +1,299 @@
-﻿import { Link } from "react-router-dom";
-import projectDemoArt from "../assets/scenarios/project-demo.svg";
-import restaurantDishArt from "../assets/scenarios/restaurant-dish.svg";
+import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
+import { Link } from "react-router-dom";
+import heroBg from "../assets/scenarios/hero-bg.webp";
+import meetingImg from "../assets/scenarios/scenario-meeting.webp";
+import restaurantImg from "../assets/scenarios/scenario-restaurant.webp";
+import outageImg from "../assets/scenarios/scenario-outage.svg";
+import handoverImg from "../assets/scenarios/scenario-handover.svg";
+import firstWeekImg from "../assets/scenarios/scenario-firstweek.svg";
+import { useReveal } from "../hooks/useReveal";
+import { useSpotlight } from "../hooks/useSpotlight";
+
+interface CaseEntry {
+  title: string;
+  meta: string;
+  img: string;
+}
+
+const CASES: CaseEntry[] = [
+  { title: "周三下午的会议室", meta: "汇报危机 · 资源协调 · 15 轮", img: meetingImg },
+  { title: "8号桌的客人", meta: "出品事故 · 现场处置 · 15 轮", img: restaurantImg },
+  { title: "零点大促的故障工单", meta: "服务事故 · 跨团队协同 · 15 轮", img: outageImg },
+  { title: "接手的第三周", meta: "管理接盘 · 信息核实 · 15 轮", img: handoverImg },
+  { title: "入职第一周的需求对接", meta: "新人困境 · 需求对接 · 15 轮", img: firstWeekImg }
+];
+
+interface FlowStep {
+  n: string;
+  l: string;
+  f: string;
+  live?: boolean;
+}
+
+const STEPS: FlowStep[] = [
+  { n: "01", l: "准备回合", f: "Round setup" },
+  { n: "02", l: "质量门", f: "Quality gate" },
+  { n: "03", l: "Director", f: "调度" },
+  { n: "04", l: "GroupGuard", f: "校验" },
+  { n: "05", l: "Role Agent", f: "追问", live: true },
+  { n: "06", l: "持久化", f: "Persist" },
+  { n: "07", l: "结束门", f: "Finish gate" },
+  { n: "08", l: "Judge", f: "按需采样" }
+];
+
+const STEP_DELAYS = [".05s", ".1s", ".15s", ".2s", ".25s", ".3s", ".35s", ".4s"];
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  c: string;
+}
 
 export function HomePage() {
+  useSpotlight();
+
+  const heroRef = useRef<HTMLElement | null>(null);
+  const bgRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const titleEl = useRef<HTMLHeadingElement | null>(null);
+
+  const kickerRef = useReveal<HTMLSpanElement>();
+  const titleReveal = useReveal<HTMLHeadingElement>();
+  const descRef = useReveal<HTMLParagraphElement>();
+  const ctaRef = useReveal<HTMLDivElement>();
+  const boardRef = useReveal<HTMLElement>();
+  const wfKickerRef = useReveal<HTMLSpanElement>();
+  const wfTitleRef = useReveal<HTMLHeadingElement>();
+  const wfDescRef = useReveal<HTMLParagraphElement>();
+  const stepRefs = [
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>(),
+    useReveal<HTMLDivElement>()
+  ];
+
+  useEffect(() => {
+    const hero = heroRef.current!;
+    const cv = canvasRef.current!;
+    const bg = bgRef.current!;
+    const title = titleEl.current!;
+    if (!hero || !cv || !bg || !title) return;
+    const ctx = cv.getContext("2d")!;
+    if (!ctx) return;
+
+    const N = 64;
+    const LINK = 130;
+    const MLINK = 180;
+    const COLS = ["rgba(227,195,126,", "rgba(91,216,194,"];
+    let W = 0;
+    let H = 0;
+    let pts: Particle[] = [];
+    let mx = -9999;
+    let my = -9999;
+    let raf = 0;
+
+    function resize() {
+      W = cv.width = hero.clientWidth;
+      H = cv.height = hero.clientHeight;
+    }
+
+    function seed() {
+      const count = window.innerWidth < 980 ? Math.floor(N / 2) : N;
+      pts = [];
+      for (let i = 0; i < count; i++) {
+        pts.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.32,
+          vy: (Math.random() - 0.5) * 0.32,
+          r: Math.random() * 1.5 + 0.6,
+          c: COLS[i % 2]
+        });
+      }
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of pts) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, 7);
+        ctx.fillStyle = p.c + "0.65)";
+        ctx.fill();
+      }
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const a = pts[i];
+          const b = pts[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < LINK * LINK) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = "rgba(227,195,126," + 0.13 * (1 - d2 / (LINK * LINK)) + ")";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+      }
+      for (const p of pts) {
+        const dx = p.x - mx;
+        const dy = p.y - my;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < MLINK * MLINK) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(mx, my);
+          ctx.strokeStyle = "rgba(91,216,194," + 0.3 * (1 - d2 / (MLINK * MLINK)) + ")";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    function onMove(e: MouseEvent) {
+      const r = hero.getBoundingClientRect();
+      mx = e.clientX - r.left;
+      my = e.clientY - r.top;
+      const nx = e.clientX / window.innerWidth - 0.5;
+      const ny = e.clientY / window.innerHeight - 0.5;
+      bg.style.transform = `scale(1.06) translate(${(-nx * 26).toFixed(1)}px, ${(-ny * 18).toFixed(1)}px)`;
+      title.style.setProperty("--shx", String(Math.round((nx + 0.5) * 100)));
+    }
+
+    function onLeave() {
+      mx = -9999;
+      my = -9999;
+      bg.style.transform = "scale(1.06)";
+    }
+
+    function onResize() {
+      resize();
+      seed();
+    }
+
+    resize();
+    seed();
+    tick();
+    hero.addEventListener("mousemove", onMove);
+    hero.addEventListener("mouseleave", onLeave);
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      hero.removeEventListener("mousemove", onMove);
+      hero.removeEventListener("mouseleave", onLeave);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
   return (
-    <main className="home-shell command-home">
-      <section className="hero-grid" aria-labelledby="home-title">
-        <div className="hero-main stagger-in">
-          <span className="section-label">Generative LLM Multi-Agent assessment system</span>
-          <h1 id="home-title">
-            <span>基于生成式大模型 Multi-Agent 的</span>
-            <em>职场情境能力评估系统</em>
-          </h1>
-          <p className="hero-desc">
-            这是一个情境模拟反馈诊断系统。用户进入会议室、餐厅等职场压力情境，与多个 Agent 对话；
-            系统保留用户原话，抽取行为证据，并在证据不足或采样分歧过大时输出观察反馈。
-          </p>
-          <div className="hero-actions">
-            <Link to="/scenarios" className="btn-primary">
-              进入评估情境
-            </Link>
-            <Link to="/admin" className="btn-ghost">
-              查看管理端
-            </Link>
-          </div>
-        </div>
-
-        <aside className="hero-visual" aria-label="情境入口预览">
-          <div className="assessment-board">
-            <div className="assessment-board-head">
-              <span>示例评估情境</span>
-              <strong>02</strong>
-            </div>
-            <Link to="/scenarios" className="case-preview case-preview-primary">
-              <img src={projectDemoArt} alt="会议室情境预览" />
-              <span>周三下午的会议室</span>
-            </Link>
-            <Link to="/scenarios" className="case-preview case-preview-secondary">
-              <img src={restaurantDishArt} alt="餐厅情境预览" />
-              <span>8号桌的客人</span>
-            </Link>
-            <div className="instrument-strip" aria-hidden="true">
-              <span />
-              <span />
-              <span />
+    <main>
+      <section className="hero-full" ref={heroRef}>
+        <div className="hero-bg" ref={bgRef} />
+        <div className="hero-veil" />
+        <canvas id="heroFx" ref={canvasRef} />
+        <div className="wrap hero-grid">
+          <div className="hero-left">
+            <span className="kicker" ref={kickerRef} data-reveal>
+              MAAT · Multi-Agent Situational Assessment
+            </span>
+            <h1
+              className="h1 sheen"
+              data-reveal
+              style={{ "--d": ".08s" } as CSSProperties}
+              ref={(el) => {
+                titleReveal.current = el;
+                titleEl.current = el;
+              }}
+            >
+              基于 LLM Multi-Agent 的
+              <br />
+              情境行为评估系统
+            </h1>
+            <p className="hero-desc" ref={descRef} data-reveal style={{ "--d": ".16s" } as CSSProperties}>
+              在高压情境里与多个角色对话，系统记录你的原话，抽取行为证据，生成一份可追溯的行为观察报告。
+            </p>
+            <div className="cta-row" ref={ctaRef} data-reveal style={{ "--d": ".24s" } as CSSProperties}>
+              <Link to="/scenarios" className="btn btn-gold">
+                进入评估情境
+              </Link>
+              <Link to="/admin" className="btn btn-ghost">
+                查看管理端
+              </Link>
             </div>
           </div>
-        </aside>
-      </section>
 
-      <section className="workflow-section" aria-labelledby="workflow-title">
-        <div className="workflow-header">
-          <span className="section-label">Agent workflow</span>
-          <h2 id="workflow-title">一次回答如何触发下一轮追问</h2>
-          <p>
-            用户每次回应都会进入证据抽取、覆盖检查和下一轮调度。Role Agent 只看到当前情境和本轮指令，
-            Judge Agent 在结束后汇总行为证据、采样方差和发展建议。
-          </p>
-        </div>
-
-        <ol className="workflow-map">
-          <li className="workflow-step workflow-step-input">
-            <span className="workflow-index">00</span>
-            <h3>用户回应</h3>
-            <p>记录原话、轮次和发言对象，保留真实表达。</p>
-            <small>User reply</small>
-          </li>
-          <li className="workflow-step">
-            <span className="workflow-index">01</span>
-            <h3>Evidence Agent</h3>
-            <p>抽取事实核实、边界表达、方案选择、冲突安抚等行为证据。</p>
-            <small>Evidence</small>
-          </li>
-          <li className="workflow-step">
-            <span className="workflow-index">02</span>
-            <h3>Coverage check</h3>
-            <p>检查哪些维度已有证据，哪些维度仍需要继续观察。</p>
-            <small>Coverage</small>
-          </li>
-          <li className="workflow-step workflow-step-control">
-            <span className="workflow-index">03</span>
-            <h3>Orchestrator Agent</h3>
-            <p>根据待观察维度选择下一位 Role Agent 和压力点。</p>
-            <small>Dispatch</small>
-          </li>
-          <li className="workflow-step">
-            <span className="workflow-index">04</span>
-            <h3>Role Agent</h3>
-            <p>按公开情境和本轮指令追问，不读取评分细则或参考答案。</p>
-            <small>Role play</small>
-          </li>
-          <li className="workflow-step workflow-step-final">
-            <span className="workflow-index">05</span>
-            <h3>Observation report</h3>
-            <p>Judge Agent 汇总证据、覆盖情况、采样方差和发展建议。</p>
-            <small>Judge Agent</small>
-          </li>
-        </ol>
-      </section>
-
-      <section className="concept-strip" aria-labelledby="concept-title">
-        <div className="concept-heading">
-          <span className="section-label">Interpretability</span>
-          <h2 id="concept-title">报告如何保持可解释</h2>
-          <p>每个结论都尽量回到用户原话、行为证据和覆盖状态，方便判断报告边界。</p>
-        </div>
-        <div className="concept-grid">
-          <article className="concept-card">
-            <strong>Observation point</strong>
-            <p>某个维度需要看到的行为证据，例如事实核实、边界表达、备选方案。</p>
-          </article>
-          <article className="concept-card">
-            <strong>Evidence coverage</strong>
-            <p>报告标出已覆盖维度和证据不足维度，方便判断结论边界。</p>
-          </article>
-          <article className="concept-card">
-            <strong>Prompt isolation</strong>
-            <p>Role Agent 和 Orchestrator Agent 不读取评分细则、参考答案或最终报告要求。</p>
-          </article>
-          <article className="concept-card">
-            <strong>Reliability gate</strong>
-            <p>回答过少、证据不足或采样分歧过大时，系统只输出观察反馈。</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="quality-gates" aria-labelledby="quality-title">
-        <div className="quality-heading">
-          <span className="section-label">Control layers</span>
-          <h2 id="quality-title">从对话到报告的三层约束</h2>
-        </div>
-        <div className="quality-board">
-          <article className="quality-gate">
-            <span className="quality-code">A</span>
-            <div>
-              <h3>Prompt isolation</h3>
-              <p>参考答案和评分细则只进入 Judge Agent 视图，不进入 Role Agent / Orchestrator Agent。</p>
+          <aside className="board glass" ref={boardRef} data-reveal style={{ "--d": ".3s" } as CSSProperties}>
+            <div className="board-head">
+              <span>评估情境</span>
+              <b>05</b>
             </div>
-          </article>
-          <article className="quality-gate">
-            <span className="quality-code">B</span>
-            <div>
-              <h3>Evidence first</h3>
-              <p>报告先展示用户原话和对应分析，再呈现参考指数、覆盖情况和采样方差。</p>
-            </div>
-          </article>
-          <article className="quality-gate">
-            <span className="quality-code">C</span>
-            <div>
-              <h3>Reliability gate</h3>
-              <p>证据不足、回答过少或采样分歧过大时，结果降级为观察反馈。</p>
-            </div>
-          </article>
+            {CASES.map((c) => (
+              <Link key={c.title} to="/scenarios" className="case">
+                <img src={c.img} alt={c.title} />
+                <div>
+                  <div className="t">{c.title}</div>
+                  <div className="m">{c.meta}</div>
+                </div>
+              </Link>
+            ))}
+          </aside>
         </div>
       </section>
 
-      <p className="footer-note">
-        基于生成式大模型 Multi-Agent 的职场情境能力评估系统 · Evidence first · Reliability gate
-      </p>
+      <section className="workflow">
+        <div className="wrap">
+          <div className="workflow-head">
+            <span className="kicker" ref={wfKickerRef} data-reveal>
+              Agent Workflow
+            </span>
+            <h2 className="h2" ref={wfTitleRef} data-reveal style={{ "--d": ".08s" } as CSSProperties}>
+              一次回答如何触发下一轮追问
+            </h2>
+            <p className="muted" ref={wfDescRef} data-reveal style={{ "--d": ".16s" } as CSSProperties}>
+              每一轮回应都会经过八个 LangGraph 节点：准备回合、质量门、Director、GroupGuard、Role Agent、持久化、结束门、Judge。
+              Role Agent 只看当前情境与指令，评分细则始终隔离。
+            </p>
+          </div>
+          <div className="flow">
+            {STEPS.map((s, i) => (
+              <div
+                key={s.n}
+                className={`step${s.live ? " live" : ""}`}
+                data-reveal
+                style={{ "--d": STEP_DELAYS[i] } as CSSProperties}
+                ref={stepRefs[i]}
+              >
+                <span className="n">{s.n}</span>
+                <span className="l">{s.l}</span>
+                <span className="f">{s.f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <div className="wrap footer-inner">
+          <span>MAAT · 情境行为评估系统</span>
+          <span>本地运行 · SQLite 持久化 · Mock / DeepSeek 双模式</span>
+        </div>
+      </footer>
     </main>
   );
 }

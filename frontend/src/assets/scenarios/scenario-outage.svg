@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1216 756" role="img" aria-label="零点大促的故障工单">
+  <rect width="1216" height="756" fill="#0B0C10"/>
+  <defs>
+    <linearGradient id="gGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EBCF8F"/>
+      <stop offset="1" stop-color="#C9A453"/>
+    </linearGradient>
+    <linearGradient id="gTeal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5BD8C2"/>
+      <stop offset="1" stop-color="#3E8E7E"/>
+    </linearGradient>
+  </defs>
+  <!-- server rack -->
+  <g stroke="rgba(255,255,255,.10)" fill="none">
+    <rect x="300" y="190" width="360" height="376" rx="16"/>
+    <rect x="330" y="226" width="300" height="44" rx="8"/>
+    <rect x="330" y="292" width="300" height="44" rx="8"/>
+    <rect x="330" y="358" width="300" height="44" rx="8"/>
+    <rect x="330" y="424" width="300" height="44" rx="8"/>
+    <rect x="330" y="490" width="300" height="44" rx="8"/>
+  </g>
+  <!-- rack status dots: one red -->
+  <circle cx="352" cy="248" r="6" fill="#E0655B"/>
+  <circle cx="352" cy="314" r="6" fill="#E3C37E"/>
+  <circle cx="352" cy="380" r="6" fill="#5BD8C2"/>
+  <circle cx="352" cy="446" r="6" fill="#5BD8C2"/>
+  <circle cx="352" cy="512" r="6" fill="#E3C37E"/>
+  <!-- pulse line -->
+  <polyline points="380,270 452,270 476,258 500,282 524,258 548,270 606,270" fill="none" stroke="url(#gTeal)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- alarm ring -->
+  <circle cx="862" cy="300" r="120" fill="none" stroke="rgba(227,195,126,.25)" stroke-width="2"/>
+  <circle cx="862" cy="300" r="76" fill="none" stroke="rgba(227,195,126,.4)" stroke-width="2"/>
+  <circle cx="862" cy="300" r="32" fill="none" stroke="#E0655B" stroke-width="3"/>
+  <path d="M862 300 L896 268" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-linecap="round"/>
+  <!-- ticket stack -->
+  <g fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.12)">
+    <rect x="700" y="470" width="330" height="40" rx="8"/>
+    <rect x="700" y="520" width="330" height="40" rx="8"/>
+    <rect x="700" y="570" width="330" height="40" rx="8"/>
+    <rect x="700" y="620" width="240" height="40" rx="8"/>
+  </g>
+  <g font-family="Space Grotesk,Noto Sans SC,sans-serif" font-size="22" letter-spacing=".18em">
+    <text x="700" y="497" fill="#E0655B" font-weight="600">INC-0041</text>
+    <text x="700" y="547" fill="#E3C37E" font-weight="600">INC-0042</text>
+    <text x="700" y="597" fill="#E3C37E" font-weight="600">INC-0043</text>
+    <text x="700" y="647" fill="rgba(255,255,255,.45)">INC-0044</text>
+  </g>
+  <!-- clock -->
+  <circle cx="200" cy="380" r="72" fill="none" stroke="url(#gGold)" stroke-width="3"/>
+  <circle cx="200" cy="380" r="4" fill="#E3C37E"/>
+  <line x1="200" y1="380" x2="200" y2="330" stroke="#E3C37E" stroke-width="3" stroke-linecap="round"/>
+  <line x1="200" y1="380" x2="240" y2="392" stroke="#E3C37E" stroke-width="3" stroke-linecap="round"/>
+  <text x="200" y="486" text-anchor="middle" fill="rgba(255,255,255,.5)" font-family="Space Grotesk,sans-serif" font-size="24" letter-spacing=".1em">00:20</text>
+</svg>

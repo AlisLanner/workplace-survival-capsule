@@ -1,5 +1,5 @@
 {
-  "name": "@workplace-survival-capsule/frontend",
+  "name": "@llm-multi-agent-workplace-assessment-system/frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,9 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "antd": "^6.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.1",

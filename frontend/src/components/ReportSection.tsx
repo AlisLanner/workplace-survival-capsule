@@ -6,7 +6,7 @@ export function ReportSection({
   items: string[];
 }) {
   return (
-    <section className="report-section">
+    <section>
       <h3>{title}</h3>
       <ul>
         {items.map((item) => (
@@ -16,4 +16,3 @@ export function ReportSection({
     </section>
   );
 }
-

@@ -1,9 +1,12 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getReport } from "../api/assessment.api";
+import { getReport, getSession } from "../api/assessment.api";
 import { RadarChart } from "../components/RadarChart";
 import { ReportSection } from "../components/ReportSection";
-import { getDimensionColor, getDimensionLabel } from "../config/dimensions";
+import { getDimensionLabel } from "../config/dimensions";
+import { useCountUp } from "../hooks/useCountUp";
+import { useReveal } from "../hooks/useReveal";
+import { useSpotlight } from "../hooks/useSpotlight";
 import type { Report } from "../types/assessment";
 
 function confidenceLevel(variance: number) {
@@ -17,34 +20,36 @@ function statusMeta(report: Report) {
     return {
       label: "评分失败",
       cls: "conf-low",
-      note: "评分服务暂时不可用，请稍后重试。"
+      note: "对话记录已保留，稍后重进本页即可查看结果。"
     };
   }
   if (report.report_status === "debug" || report.mock_generated) {
     return {
       label: "调试报告",
       cls: "conf-low",
-      note: "本报告由本地 mock Judge Agent 生成，仅用于调试。"
+      note: "由本地 mock 生成，用于开发调试。"
     };
   }
   if (report.report_status === "unratable") {
     return {
       label: "仅观察反馈",
       cls: "conf-low",
-      note: "Judge Agent 采样分歧过大，当前结果仅保留为观察记录。"
+      note: report.human_review_reason?.includes("采样")
+        ? "采样分歧过大，保留为观察记录。"
+        : "本次未形成可评分证据（如单轮计时结束），保留为观察记录。"
     };
   }
   if (report.report_status === "provisional") {
     return {
       label: "观察性反馈",
       cls: "conf-mid",
-      note: "观察点覆盖不足，参考指数仅作发展反馈，不建议横向比较。"
+      note: "部分维度证据不足，参考指数供发展反馈。"
     };
   }
   return {
     label: "本次观察结果",
     cls: "conf-high",
-    note: "当前报告通过采样和覆盖检查，可作为本次模拟测评的参考结果。"
+    note: "已通过采样与覆盖检查。"
   };
 }
 
@@ -52,53 +57,103 @@ function scoringFailureReason(report: Report) {
   return report.scoring_error_reason ?? report.reason ?? report.human_review_reason ?? "评分服务暂时不可用，请稍后重试。";
 }
 
+function observationTitle(text: string | undefined | null) {
+  const value = typeof text === "string" ? text : "";
+  return value.length > 24 ? `${value.slice(0, 24)}…` : value;
+}
+
+/** Scroll-reveal wrapper: adds `.in` via IntersectionObserver when entering the viewport. */
+function Reveal({
+  className,
+  style,
+  children
+}: {
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  const ref = useReveal<HTMLDivElement>();
+  return (
+    <div ref={ref} className={className} data-reveal style={style}>
+      {children}
+    </div>
+  );
+}
+
 export function ReportPage() {
   const { sessionId } = useParams();
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sceneTitle, setSceneTitle] = useState<string | null>(null);
+  useSpotlight();
 
   useEffect(() => {
     if (!sessionId) return;
     getReport(sessionId)
       .then(setReport)
       .catch((err: Error) => setError(err.message));
+    getSession(sessionId)
+      .then((detail) => setSceneTitle(detail.scenario.title))
+      .catch(() => {});
   }, [sessionId]);
 
   if (error) {
     return (
-      <main className="page-shell">
+      <main className="wrap page">
         <p className="error-box">{error}</p>
-        <Link to="/scenarios" className="btn-ghost">返回场景列表</Link>
+        <Link to="/scenarios" className="btn btn-ghost">
+          返回场景列表
+        </Link>
       </main>
     );
   }
 
   if (!report) {
-    return <main className="page-shell loading-state">正在生成评估报告...</main>;
+    return <main className="wrap page loading">正在生成观察报告…</main>;
   }
 
   if (report.report_status === "scoring_failed") {
-    const status = statusMeta(report);
-    return (
-      <main className="report-shell">
-        <section className="report-hero">
-          <div>
-            <span className="section-label">Behavior Observation</span>
-            <h1>评分服务暂时不可用</h1>
-            <p>{scoringFailureReason(report)}</p>
-            <div className="report-hero-tags">
-              <span className={`confidence-pill ${status.cls}`} title={status.note}>{status.label}</span>
-              <span className="tech-label">未生成参考指数</span>
-            </div>
-            <p className="report-status-note">对话记录已保留，可稍后重新进入报告页查看结果。</p>
-            <Link to="/scenarios" className="btn-ghost" style={{ marginTop: 16, display: "inline-flex" }}>
-              返回场景列表
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
+    return <ScoringFailedView report={report} />;
   }
+
+  return <ReportBody report={report} sceneTitle={sceneTitle} />;
+}
+
+function ScoringFailedView({ report }: { report: Report }) {
+  const status = statusMeta(report);
+  return (
+    <main className="wrap page">
+      <section className="report-hero">
+        <Reveal>
+          <span className="kicker">Behavior Observation</span>
+        </Reveal>
+        <Reveal style={{ "--d": ".08s" } as CSSProperties}>
+          <h2 className="h2">评分服务暂时不可用</h2>
+        </Reveal>
+        <Reveal style={{ "--d": ".14s" } as CSSProperties}>
+          <p className="muted">{scoringFailureReason(report)}</p>
+        </Reveal>
+        <Reveal style={{ "--d": ".2s" } as CSSProperties}>
+          <div className={`conf ${status.cls}`}>{status.label}</div>
+        </Reveal>
+        <Reveal style={{ "--d": ".26s" } as CSSProperties}>
+          <p className="small muted">{status.note}</p>
+        </Reveal>
+        <Reveal style={{ "--d": ".32s" } as CSSProperties}>
+          <Link to="/scenarios" className="btn btn-ghost" style={{ marginTop: 16, display: "inline-flex" }}>
+            返回场景列表
+          </Link>
+        </Reveal>
+      </section>
+    </main>
+  );
+}
+
+function ReportBody({ report, sceneTitle }: { report: Report; sceneTitle: string | null }) {
+  const dimsReveal = useReveal<HTMLDivElement>();
+  const total = Number.isFinite(report.total_score) ? report.total_score : null;
+  const decimals = total !== null && !Number.isInteger(total) ? 1 : 0;
+  const { ref: scoreRef, text: scoreText } = useCountUp(total ?? 0, decimals);
 
   const conf = report.sampling_stats ? confidenceLevel(report.sampling_stats.variance) : null;
   const status = statusMeta(report);
@@ -108,161 +163,176 @@ export function ReportPage() {
   const calibrationIssues = report.calibration_issues ?? [];
   const reviewReasons = [report.human_review_reason, ...calibrationIssues].filter(Boolean);
   const coverage = report.coverage_status;
-  const coveredCount = coverage?.covered_dimensions.length ?? 0;
-  const totalCoverageCount = coverage ? coverage.covered_dimensions.length + coverage.insufficient_dimensions.length : 0;
+  const coveredCount = coverage?.covered_dimensions?.length ?? 0;
+  const totalCoverageCount = coverage
+    ? (coverage.covered_dimensions?.length ?? 0) + (coverage.insufficient_dimensions?.length ?? 0)
+    : 0;
   const formalScore = report.report_status === "confident" && !report.mock_generated;
+  const heroTitle = sceneTitle ?? "本次评估";
 
   return (
-    <main className="report-shell">
+    <main className="wrap page">
       <section className="report-hero">
-        <div>
-          <span className="section-label">Behavior Observation</span>
-          <h1>观察区间 · {report.level}</h1>
-          <p>{report.summary}</p>
-          <div className="report-hero-tags">
-            <span className={`confidence-pill ${status.cls}`} title={status.note}>{status.label}</span>
-            <span className="tech-label">冲突风格 · {report.conflict_style}</span>
+        <Reveal>
+          <span className="kicker">Behavior Observation</span>
+        </Reveal>
+        <Reveal style={{ "--d": ".08s" } as CSSProperties}>
+          <h2 className="h2">{heroTitle} · 观察报告</h2>
+        </Reveal>
+        <Reveal style={{ "--d": ".16s" } as CSSProperties}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <span className={`conf ${status.cls}`}>{status.label}</span>
             {conf ? (
-              <span className={`confidence-pill ${conf.cls}`} title={`采样结果: [${report.sampling_stats!.scores.join(", ")}] · 方差: ${report.sampling_stats!.variance}`}>
-                {conf.label} · σ²={report.sampling_stats!.variance}
-              </span>
+              <span className={`conf ${conf.cls}`}>{conf.label} · σ²={report.sampling_stats!.variance}</span>
             ) : null}
             {coverage ? (
-              <span className={`confidence-pill ${coverage.complete ? "conf-high" : "conf-mid"}`}>
+              <span className={`conf ${coverage.complete ? "conf-high" : "conf-mid"}`}>
                 观察点覆盖 {coveredCount}/{totalCoverageCount}
               </span>
             ) : null}
+            <span className="chip">{report.level}</span>
           </div>
-          <p className="report-status-note">{status.note}</p>
-          {reviewReasons.length ? <p className="report-status-note">{reviewReasons.join(" · ")}</p> : null}
-          <Link to="/scenarios" className="btn-ghost" style={{ marginTop: 16, display: "inline-flex" }}>
-            重新测评
+        </Reveal>
+        <Reveal style={{ "--d": ".22s" } as CSSProperties}>
+          <p className="muted">{status.note}</p>
+          {reviewReasons.length ? <p className="small muted">{reviewReasons.join(" · ")}</p> : null}
+        </Reveal>
+        <Reveal style={{ "--d": ".28s" } as CSSProperties}>
+          <Link to="/scenarios" className="btn btn-gold" style={{ marginTop: 20, display: "inline-flex" }}>
+            重新评估
           </Link>
-        </div>
-        <div className={`total-score ${formalScore ? "" : "total-score-muted"}`}>
-          <strong>{report.total_score}</strong>
-          <span>参考指数 / {maxScore}</span>
-        </div>
+        </Reveal>
       </section>
 
-      {report.sampling_stats ? (
-        <section className="confidence-strip" aria-label="采样一致性">
-          <div className="confidence-detail">
-            <span>Judge Agent 五次采样</span>
-            <div className="confidence-scores">
-              {report.sampling_stats.scores.map((s, i) => (
-                <span key={i} className="confidence-score-chip">{s}</span>
+      <div className="report-grid">
+        <Reveal className="glass radar-card" style={{ "--d": ".2s" } as CSSProperties}>
+          <RadarChart data={report.radar_chart_data} />
+          <div className={`score-big ${formalScore ? "" : "score-big-muted"}`}>
+            <span className="v" ref={scoreRef}>{total === null ? "–" : scoreText}</span>
+            <span className="c">
+              参考指数 / {maxScore}
+              <br />
+              {dimKeys.length} 个维度加权
+            </span>
+          </div>
+        </Reveal>
+
+        <div className="report-side">
+          <Reveal className="glass" style={{ padding: 28, "--d": ".28s" } as CSSProperties}>
+            <div className="sec-title">维度得分</div>
+            <div className="dims" ref={dimsReveal}>
+              {sortedDims.map(([key, value], i) => (
+                <div className="dim" key={key}>
+                  <div className="name">{getDimensionLabel(key)}</div>
+                  <div className="track">
+                    <div className="fill" style={{ "--w": `${Math.round((value / 20) * 100)}%`, "--d": `${i * 0.06}s` } as CSSProperties} />
+                  </div>
+                  <div className="val">{value}/20</div>
+                </div>
               ))}
             </div>
-          </div>
-          <div className="confidence-bar-wrap">
-            <div className="confidence-bar">
-              <div
-                className={`confidence-bar-fill ${conf!.cls}`}
-                style={{ width: `${Math.min(100, (report.sampling_stats.variance / 120) * 100)}%` }}
-              />
+          </Reveal>
+
+          <div>
+            <Reveal>
+              <div className="sec-title">行为观察</div>
+            </Reveal>
+            <div className="obs">
+              {report.evidence.length ? (
+                report.evidence.map((item, i) => (
+                  <Reveal key={i} className="glass obs-item spot" style={{ "--d": `${0.1 + i * 0.08}s` } as CSSProperties}>
+                    <h4>
+                      {observationTitle(item.quote || item.analysis)}
+                      <span className="tagd">{getDimensionLabel(item.dimension)}</span>
+                    </h4>
+                    <p>{item.analysis || item.quote}</p>
+                  </Reveal>
+                ))
+              ) : (
+                <p className="muted small">暂无观察记录。</p>
+              )}
             </div>
-            <span>方差 {report.sampling_stats.variance} · {conf!.label}</span>
           </div>
-        </section>
-      ) : null}
 
-      {coverage ? (
-        <section className="coverage-strip">
-          <div>
-            <strong>已观察维度</strong>
-            <span>{coverage.covered_dimensions.length ? coverage.covered_dimensions.join("、") : "暂无"}</span>
-          </div>
-          <div>
-            <strong>证据不足维度</strong>
-            <span>{coverage.insufficient_dimensions.length ? coverage.insufficient_dimensions.join("、") : "无"}</span>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="report-grid">
-        <div className="dim-bars">
-          <h3 className="section-heading">各维度行为证据强度</h3>
-          {sortedDims.map(([key, value]) => {
-            const pct = Math.round((value / 20) * 100);
-            const color = getDimensionColor(dimKeys, key);
-            const dimVar = report.sampling_stats?.dim_variances?.[key];
-            return (
-              <div className="dim-bar-row" key={key}>
-                <div className="dim-bar-head">
-                  <span>{getDimensionLabel(key)}</span>
-                  <strong style={{ color }}>{value}<small>/20</small></strong>
+          {report.sampling_stats ? (
+            <Reveal className="glass" style={{ padding: 28, "--d": ".2s" } as CSSProperties}>
+              <div className="sec-title">采样一致性</div>
+              <div className="confidence-strip" aria-label="采样一致性">
+                <div className="confidence-scores">
+                  {report.sampling_stats.scores.map((s, i) => (
+                    <span key={i} className="confidence-score-chip">{s}</span>
+                  ))}
                 </div>
-                <div className="dim-bar-track">
-                  <div className="dim-bar-fill" style={{ width: `${pct}%`, background: color }} />
+                <div className="confidence-bar">
+                  <div
+                    className={`confidence-bar-fill ${conf!.cls}`}
+                    style={{ width: `${Math.min(100, (report.sampling_stats.variance / 120) * 100)}%` }}
+                  />
                 </div>
-                {dimVar !== undefined ? (
-                  <span className="dim-var-chip" title={`5样本方差: ${dimVar}`}>σ²{dimVar}</span>
-                ) : null}
+                <span className="small muted">五次采样 · σ²={report.sampling_stats.variance}</span>
               </div>
-            );
-          })}
-        </div>
-        <div className="radar-card">
-          <h3 className="section-heading">本次情境中的行为证据分布</h3>
-          <RadarChart data={report.radar_chart_data} />
-        </div>
-      </section>
+            </Reveal>
+          ) : null}
 
-      <section className="dim-analysis-section" style={{ marginTop: 20 }}>
-        <h3 className="section-heading">维度分析</h3>
-        <div className="dim-analysis-grid">
-          {Object.entries(report.dimension_analysis).map(([key, analysis]) => {
-            const color = getDimensionColor(dimKeys, key);
-            return (
-              <article className="dim-analysis-card" key={key} style={{ borderLeftColor: color }}>
-                <span className="dim-analysis-label" style={{ color }}>{getDimensionLabel(key)}</span>
-                <p>{analysis}</p>
-              </article>
-            );
-          })}
+          {coverage ? (
+            <Reveal className="glass" style={{ padding: 28, "--d": ".24s" } as CSSProperties}>
+              <div className="sec-title">观察点覆盖</div>
+              <div className="coverage-strip">
+                <div>
+                  <strong>已观察维度</strong>
+                  <span>{coverage.covered_dimensions.length ? coverage.covered_dimensions.map(getDimensionLabel).join("、") : "暂无"}</span>
+                </div>
+                <div>
+                  <strong>证据不足维度</strong>
+                  <span>{coverage.insufficient_dimensions.length ? coverage.insufficient_dimensions.map(getDimensionLabel).join("、") : "无"}</span>
+                </div>
+              </div>
+            </Reveal>
+          ) : null}
+
+          <Reveal style={{ "--d": ".1s" } as CSSProperties}>
+            <div className="sec-title">维度分析</div>
+            <div className="dim-analysis-grid">
+              {Object.entries(report.dimension_analysis).map(([key, analysis]) => (
+                <article className="dim-analysis-card" key={key}>
+                  <span className="dim-analysis-label">{getDimensionLabel(key)}</span>
+                  <p>{analysis}</p>
+                </article>
+              ))}
+            </div>
+          </Reveal>
+
+          <Reveal style={{ "--d": ".16s" } as CSSProperties}>
+            <div className="report-copy">
+              <ReportSection title="能力优势" items={report.strengths} />
+              <ReportSection title="发展风险" items={report.risks} />
+              <ReportSection title="改进建议" items={report.suggestions} />
+            </div>
+          </Reveal>
+
+          <Reveal style={{ "--d": ".2s" } as CSSProperties}>
+            <div className="sec-title">关键证据</div>
+            <div className="evidence-grid">
+              {report.evidence.length ? (
+                report.evidence.map((item, i) => (
+                  <Reveal key={i} className="evidence-card" style={{ "--d": `${0.1 + i * 0.08}s` } as CSSProperties}>
+                    <span className="evidence-dim-tag">{getDimensionLabel(item.dimension)}</span>
+                    <blockquote>{item.quote}</blockquote>
+                    <p>{item.analysis}</p>
+                  </Reveal>
+                ))
+              ) : (
+                <p className="muted small">暂无关键证据。</p>
+              )}
+            </div>
+          </Reveal>
+
+          <Reveal className="glass final-card" style={{ "--d": ".26s" } as CSSProperties}>
+            <h3>下一步建议</h3>
+            <p>{report.final_recommendation}</p>
+          </Reveal>
         </div>
-      </section>
-
-      <section className="report-copy">
-        <ReportSection title="能力优势" items={report.strengths} />
-        <ReportSection title="发展关注点" items={report.risks} />
-        <ReportSection title="改进建议" items={report.suggestions} />
-      </section>
-
-      <section style={{ marginTop: 20 }}>
-        <h3 className="section-heading" style={{ marginBottom: 14 }}>关键证据</h3>
-        <div className="evidence-grid">
-          {report.evidence.map((item, i) => {
-            const color = getDimensionColor(dimKeys, item.dimension);
-            return (
-              <article className="evidence-card" key={i} style={{ borderLeftColor: color }}>
-                <span className="evidence-dim-tag" style={{ color, background: `${color}10` }}>
-                  {getDimensionLabel(item.dimension)}
-                </span>
-                <blockquote>{item.quote}</blockquote>
-                <p>{item.analysis}</p>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="final-card" style={{ marginTop: 20 }}>
-        <h3>发展建议</h3>
-        <p>{report.final_recommendation}</p>
-      </section>
+      </div>
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-

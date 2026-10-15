@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1216 756" role="img" aria-label="入职第一周的需求对接">
+  <rect width="1216" height="756" fill="#0B0C10"/>
+  <defs>
+    <linearGradient id="eGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EBCF8F"/>
+      <stop offset="1" stop-color="#C9A453"/>
+    </linearGradient>
+    <linearGradient id="eTeal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5BD8C2"/>
+      <stop offset="1" stop-color="#3E8E7E"/>
+    </linearGradient>
+  </defs>
+  <!-- desk -->
+  <g stroke="rgba(255,255,255,.12)" fill="rgba(255,255,255,.03)">
+    <rect x="180" y="430" width="860" height="26" rx="13"/>
+    <rect x="220" y="456" width="34" height="150" rx="6"/>
+    <rect x="966" y="456" width="34" height="150" rx="6"/>
+  </g>
+  <!-- monitor -->
+  <g fill="none" stroke="rgba(255,255,255,.16)">
+    <rect x="330" y="200" width="380" height="240" rx="14"/>
+    <rect x="348" y="218" width="344" height="200" rx="8" fill="rgba(91,216,194,.05)"/>
+  </g>
+  <!-- report skeleton on screen -->
+  <g stroke="rgba(255,255,255,.22)">
+    <line x1="376" y1="248" x2="560" y2="248" stroke="#E3C37E" stroke-width="4" stroke-linecap="round"/>
+    <line x1="376" y1="276" x2="664" y2="276"/>
+    <line x1="376" y1="300" x2="620" y2="300"/>
+    <line x1="376" y1="324" x2="664" y2="324"/>
+    <line x1="376" y1="348" x2="560" y2="348"/>
+    <line x1="376" y1="372" x2="500" y2="372"/>
+  </g>
+  <!-- pending badge on screen -->
+  <rect x="588" y="232" width="76" height="28" rx="14" fill="rgba(224,101,91,.16)" stroke="rgba(224,101,91,.55)"/>
+  <text x="626" y="251" text-anchor="middle" fill="#E0655B" font-family="Space Grotesk,sans-serif" font-size="14" font-weight="600">D-3</text>
+  <!-- calendar -->
+  <rect x="760" y="240" width="120" height="140" rx="12" fill="none" stroke="url(#eGold)" stroke-width="2.5"/>
+  <line x1="760" y1="282" x2="880" y2="282" stroke="rgba(227,195,126,.5)" stroke-width="2"/>
+  <text x="820" y="268" text-anchor="middle" fill="#E3C37E" font-family="Space Grotesk,sans-serif" font-size="16" font-weight="600">周五</text>
+  <text x="820" y="330" text-anchor="middle" fill="rgba(255,255,255,.7)" font-family="Space Grotesk,sans-serif" font-size="34" font-weight="600">14:00</text>
+  <text x="820" y="360" text-anchor="middle" fill="rgba(255,255,255,.4)" font-family="Noto Sans SC,sans-serif" font-size="14">初版截止</text>
+  <!-- lock: permission half-open -->
+  <g transform="translate(300,300)">
+    <rect x="0" y="18" width="44" height="34" rx="7" fill="none" stroke="url(#eTeal)" stroke-width="3"/>
+    <path d="M10 18 v-8 a12 12 0 0 1 24 0 v8" fill="none" stroke="url(#eTeal)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="22" cy="35" r="4" fill="#5BD8C2"/>
+  </g>
+  <!-- speech bubbles -->
+  <g fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.18)">
+    <rect x="940" y="120" width="200" height="64" rx="14"/>
+    <path d="M960 184 l-10 26 26-20 z" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.18)"/>
+    <rect x="60" y="180" width="200" height="64" rx="14"/>
+    <path d="M240 244 l10 26 -26 -20 z" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.18)"/>
+  </g>
+  <text x="1040" y="147" text-anchor="middle" fill="#E3C37E" font-family="Noto Sans SC,sans-serif" font-size="15">周五能交什么？</text>
+  <text x="1040" y="169" text-anchor="middle" fill="rgba(255,255,255,.5)" font-family="Noto Sans SC,sans-serif" font-size="13">方姐</text>
+  <text x="160" y="212" text-anchor="middle" fill="#5BD8C2" font-family="Noto Sans SC,sans-serif" font-size="15">口径定了吗？</text>
+  <text x="160" y="234" text-anchor="middle" fill="rgba(255,255,255,.5)" font-family="Noto Sans SC,sans-serif" font-size="13">大周</text>
+  <!-- new-grad badge -->
+  <circle cx="620" cy="470" r="56" fill="none" stroke="url(#eTeal)" stroke-width="2.5"/>
+  <text x="620" y="484" text-anchor="middle" fill="#5BD8C2" font-family="Noto Sans SC,sans-serif" font-size="24" font-weight="600">第一周</text>
+</svg>

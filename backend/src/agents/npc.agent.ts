@@ -11,6 +11,13 @@ const promptKeyByAgent: Record<AgentName, string> = {
   coworker: "coworker",
   client: "client"
 };
+const FALLBACK_VISIBLE_REPLY_CHUNK_SIZE = 12;
+
+function emitVisibleReplyChunks(content: string, onToken: (token: string) => void) {
+  for (let index = 0; index < content.length; index += FALLBACK_VISIBLE_REPLY_CHUNK_SIZE) {
+    onToken(content.slice(index, index + FALLBACK_VISIBLE_REPLY_CHUNK_SIZE));
+  }
+}
 
 type MemoryState = {
   primaryLabel: string;
@@ -284,6 +291,7 @@ User reply:
   );
 
   const extractor = new ContentStreamExtractor();
+  let emittedVisibleContent = "";
 
   const raw = await streamDeepSeek({
     systemPrompt,
@@ -296,6 +304,7 @@ User reply:
     onToken: (chunk) => {
       const content = extractor.feed(chunk);
       if (content) {
+        emittedVisibleContent += content;
         params.onToken(content);
       }
     }
@@ -303,8 +312,14 @@ User reply:
 
   const result = await parseAgentJSON<NpcResult>(raw, systemPrompt, input, `${params.agent} Agent (streaming)`);
   const violation = findNpcBoundaryViolation(params.agent, result.visible_reply?.content ?? "");
+  const finalContent = result.visible_reply?.content ?? "";
 
-  if (!violation) return result;
+  if (!violation) {
+    if (!emittedVisibleContent && finalContent) {
+      emitVisibleReplyChunks(finalContent, params.onToken);
+    }
+    return result;
+  }
 
   log("warn", "NPC reply violated assessment boundary; retrying once (streaming fallback)", {
     agent: params.agent,
@@ -341,9 +356,7 @@ Boundary correction:
   if (!retryViolation) {
     // Stream the retry content to the client
     const retryContent = retryResult.visible_reply?.content ?? "";
-    for (const char of retryContent) {
-      params.onToken(char);
-    }
+    emitVisibleReplyChunks(retryContent, params.onToken);
     return retryResult;
   }
 
@@ -354,8 +367,6 @@ Boundary correction:
 
   const fallback = createBoundarySafeNpcResult(params.agent, params.blackboard);
   const fallbackContent = fallback.visible_reply?.content ?? "";
-  for (const char of fallbackContent) {
-    params.onToken(char);
-  }
+  emitVisibleReplyChunks(fallbackContent, params.onToken);
   return fallback;
 }

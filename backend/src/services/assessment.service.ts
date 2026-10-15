@@ -3,6 +3,7 @@ import {
   normalizeDiscussion,
   normalizeScenario,
   normalizeSession,
+  normalizeTraceEvent,
   parseJsonField,
   stringifyJson
 } from "../utils/jsonField";
@@ -156,7 +157,8 @@ export async function getAssessmentSession(sessionId: string) {
     include: {
       scenario: true,
       messages: { orderBy: [{ roundIndex: "asc" }, { createdAt: "asc" }] },
-      groupDiscussions: { orderBy: [{ roundIndex: "asc" }, { createdAt: "asc" }] }
+      groupDiscussions: { orderBy: [{ roundIndex: "asc" }, { createdAt: "asc" }] },
+      agentTraceEvents: { orderBy: [{ sequence: "asc" }, { createdAt: "asc" }] }
     }
   });
 
@@ -171,6 +173,7 @@ export async function getAssessmentSession(sessionId: string) {
     scenario: normalizeScenario(session.scenario),
     messages: session.messages,
     group_discussions: session.groupDiscussions.map(normalizeDiscussion),
+    agent_trace: session.agentTraceEvents.map(normalizeTraceEvent),
     report: normalizedSession.reportJson
   };
 }

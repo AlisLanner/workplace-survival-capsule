@@ -27,11 +27,11 @@ export function PromptsPage() {
   return (
     <>
       <div className="admin-heading">
-        <span>Prompt Lab</span>
-        <h1>提示词管理</h1>
+        <span className="kicker">Prompt Lab</span>
+        <h2 className="h2">提示词管理</h2>
       </div>
       {error ? <p className="error-box">{error}</p> : null}
-      <div className="admin-stack">
+      <div className="prompt-list">
         {prompts.map((prompt) => (
           <PromptEditor key={prompt.key} prompt={prompt} onSave={save} />
         ))}
@@ -39,4 +39,3 @@ export function PromptsPage() {
     </>
   );
 }
-

@@ -1,4 +1,4 @@
-import type { GroupDiscussion, Message, Report, Scenario } from "./assessment";
+import type { AgentTraceEvent, GroupDiscussion, Message, Report, Scenario } from "./assessment";
 
 export interface DashboardData {
   total_sessions: number;
@@ -36,6 +36,6 @@ export interface AdminSessionDetail {
   };
   messages: Message[];
   group_discussions: GroupDiscussion[];
+  agent_trace: AgentTraceEvent[];
   report?: Report | null;
 }
-

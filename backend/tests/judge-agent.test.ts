@@ -119,7 +119,7 @@ describe("judge agent aggregation", () => {
     expect(result.report.level).toBe("待人工复核");
     expect(result.report.human_review_required).toBe(true);
     expect(result.report.human_review_reason).toContain("超过正式报告阈值");
-    expect(result.report.summary).toContain("不应作为正式测评结论");
+    expect(result.report.summary).toContain("作为待复核草案");
   });
 
   it("marks explicit mock judge reports as debug-only", async () => {

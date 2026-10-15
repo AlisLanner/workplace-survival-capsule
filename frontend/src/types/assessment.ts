@@ -27,6 +27,23 @@ export interface VisibleReply {
   content: string;
 }
 
+export type GraphNodeStatus = "pending" | "running" | "completed" | "skipped" | "failed";
+
+export interface AgentTraceEvent {
+  id: string;
+  sessionId: string;
+  runId: string;
+  nodeId: string;
+  agentName: string;
+  eventType: "node" | "handoff" | "guardrail" | "tool" | "error" | string;
+  status: GraphNodeStatus;
+  summary?: string | null;
+  payload?: Record<string, unknown> | null;
+  elapsedMs?: number | null;
+  sequence: number;
+  createdAt: string;
+}
+
 export interface StartAssessmentResponse {
   session_id: string;
   opening_message: VisibleReply;
@@ -46,6 +63,7 @@ export interface SessionDetail {
   scenario: Scenario;
   messages: Message[];
   group_discussions: GroupDiscussion[];
+  agent_trace: AgentTraceEvent[];
   report?: Report | null;
 }
 
@@ -67,6 +85,7 @@ export interface SendMessageResponse {
   phase: string;
   report?: Report;
   blackboard: Record<string, unknown>;
+  agent_trace?: AgentTraceEvent[];
 }
 
 export interface Report {

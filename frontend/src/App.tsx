@@ -19,20 +19,34 @@ const SessionDetailPage = lazy(() =>
 export function App() {
   return (
     <ErrorBoundary>
-      <header className="topbar">
-        <NavLink to="/" className="logo">
-          <span className="logo-mark">MA</span>
-          <span>
-            <strong>职场情境能力评估系统</strong>
-            <small>Generative LLM Multi-Agent</small>
-          </span>
-        </NavLink>
-        <nav aria-label="主导航">
-          <NavLink to="/scenarios">场景</NavLink>
-          <NavLink to="/admin">后台</NavLink>
-        </nav>
-      </header>
-      <Suspense fallback={<main className="page-shell"><div className="skeleton-panel">正在加载页面...</div></main>}>
+      <div className="aurora" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </div>
+      <div className="grain" aria-hidden="true" />
+      <nav className="nav">
+        <div className="wrap nav-inner">
+          <NavLink to="/" className="brand">
+            <span className="seal">MA</span>
+            <span>MAAT · 情境行为评估系统</span>
+          </NavLink>
+          <div className="nav-links">
+            <NavLink to="/" end>
+              首页
+            </NavLink>
+            <NavLink to="/scenarios">评估情境</NavLink>
+            <NavLink to="/admin">管理端</NavLink>
+          </div>
+        </div>
+      </nav>
+      <Suspense
+        fallback={
+          <main className="wrap page">
+            <div className="loading">正在加载页面…</div>
+          </main>
+        }
+      >
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/scenarios" element={<ScenarioPage />} />

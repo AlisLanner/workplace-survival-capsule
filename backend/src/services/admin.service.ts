@@ -3,6 +3,7 @@ import {
   normalizeDiscussion,
   normalizeScenario,
   normalizeSession,
+  normalizeTraceEvent,
   parseJsonField,
   stringifyJson
 } from "../utils/jsonField";
@@ -10,6 +11,24 @@ import {
 type ReportShape = {
   dimension_scores?: Record<string, number>;
 };
+
+const currentDashboardDimensions = [
+  "信息辨别",
+  "交付切分",
+  "备选方案",
+  "承诺边界",
+  "向上对齐",
+  "横向协商",
+  "新人赋能",
+  "压力表达",
+  "利害识别",
+  "现场止损",
+  "规则边界",
+  "面子修复",
+  "员工修复",
+  "后厨协同",
+  "系统改进"
+];
 
 function average(values: number[]): number {
   if (!values.length) {
@@ -32,16 +51,10 @@ export async function getDashboardData() {
   const reports = finishedSessions.map((session) =>
     parseJsonField<ReportShape | null>(session.reportJson, null)
   );
-  // 动态聚合所有报告中的维度（兼容新旧评测体系）
-  const allDimensionKeys = new Set<string>();
-  for (const report of reports) {
-    if (report?.dimension_scores) {
-      for (const key of Object.keys(report.dimension_scores)) {
-        allDimensionKeys.add(key);
-      }
-    }
-  }
-  const dimensions = [...allDimensionKeys];
+  // 后台总览只聚合当前测评体系维度，历史报告中的旧维度不进入“维度均分”。
+  const dimensions = currentDashboardDimensions.filter((dimension) =>
+    reports.some((report) => typeof report?.dimension_scores?.[dimension] === "number")
+  );
   const averageDimensionScores: Record<string, number> = {};
 
   for (const dimension of dimensions) {
@@ -162,7 +175,8 @@ export async function getSessionDetail(sessionId: string) {
       user: true,
       scenario: true,
       messages: { orderBy: [{ roundIndex: "asc" }, { createdAt: "asc" }] },
-      groupDiscussions: { orderBy: [{ roundIndex: "asc" }, { createdAt: "asc" }] }
+      groupDiscussions: { orderBy: [{ roundIndex: "asc" }, { createdAt: "asc" }] },
+      agentTraceEvents: { orderBy: [{ sequence: "asc" }, { createdAt: "asc" }] }
     }
   });
 
@@ -179,7 +193,7 @@ export async function getSessionDetail(sessionId: string) {
     },
     messages: session.messages,
     group_discussions: session.groupDiscussions.map(normalizeDiscussion),
+    agent_trace: session.agentTraceEvents.map(normalizeTraceEvent),
     report: normalizedSession.reportJson
   };
 }
-

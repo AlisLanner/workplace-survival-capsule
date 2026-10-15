@@ -27,8 +27,8 @@ export function ScenariosPage() {
   return (
     <>
       <div className="admin-heading">
-        <span>Scenario Ops</span>
-        <h1>场景管理</h1>
+        <span className="kicker">Scenario Ops</span>
+        <h2 className="h2">场景管理</h2>
       </div>
       {error ? <p className="error-box">{error}</p> : null}
       <div className="admin-stack">
@@ -39,4 +39,3 @@ export function ScenariosPage() {
     </>
   );
 }
-

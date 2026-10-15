@@ -52,3 +52,12 @@ export function normalizeDiscussion<T extends { inputJson: string; outputJson: s
     outputJson: parseJsonField<Record<string, unknown>>(discussion.outputJson, {})
   };
 }
+
+export function normalizeTraceEvent<T extends { payloadJson?: string | null; createdAt: Date }>(event: T) {
+  const { payloadJson, ...publicEvent } = event;
+  return {
+    ...publicEvent,
+    payload: parseJsonField<Record<string, unknown> | null>(payloadJson, null),
+    createdAt: event.createdAt.toISOString()
+  };
+}

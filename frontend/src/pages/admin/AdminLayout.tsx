@@ -3,12 +3,11 @@ import { Sidebar } from "../../components/admin/Sidebar";
 
 export function AdminLayout() {
   return (
-    <main className="admin-shell">
+    <div className="admin">
       <Sidebar />
-      <section className="admin-content">
+      <main className="amain">
         <Outlet />
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }
-

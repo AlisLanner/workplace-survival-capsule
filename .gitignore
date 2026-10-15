@@ -11,3 +11,23 @@ coverage
 ~$*.docx
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
+
+.npm-cache/
+.npm-global/
+
+# Local databases, release outputs, and document scratch files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.codex-work/
+.codex-docx-render/
+portable-release/*
+!portable-release/app/
+portable-release/app/*
+!portable-release/app/server.cjs
+!portable-release/START.bat
+!portable-release/START_NO_BROWSER.bat
+!portable-release/README.txt
+docs/competition-editing/
+参赛材料_第八届人工智能创新大赛/

@@ -19,7 +19,7 @@ describe("utils", () => {
   it("falls back to mock agent when model JSON is truncated", async () => {
     const result = await parseAgentJSON<{ active_agent: string }>(
       '{"active_agent":"leader","avoid',
-      "你是“职场生存舱”中的导演 Agent（Director）。",
+      "你是“基于LLM Multi-Agent的职场情境能力评估系统”中的导演 Agent（Director）。",
       "User reply:\n今晚我负责核心链路，并准备人工短信兜底。",
       "Director Agent"
     );

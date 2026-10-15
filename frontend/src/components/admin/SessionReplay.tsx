@@ -10,4 +10,3 @@ export function SessionReplay({ messages }: { messages: Message[] }) {
     </div>
   );
 }
-

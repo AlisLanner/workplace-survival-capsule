@@ -1,5 +1,6 @@
 import { request } from "./client";
 import { getAdminToken } from "../components/AdminGate";
+import { normalizeReport } from "./assessment.api";
 import type { DashboardData, AdminSession, AdminSessionDetail, PromptTemplate } from "../types/admin";
 import type { Scenario } from "../types/assessment";
 
@@ -42,6 +43,14 @@ export function listSessions() {
 }
 
 export function getAdminSessionDetail(id: string) {
-  return request<AdminSessionDetail>(`/api/admin/sessions/${id}`, { headers: adminHeaders() });
+  return request<AdminSessionDetail>(`/api/admin/sessions/${id}`, { headers: adminHeaders() }).then(
+    (detail) => ({
+      ...detail,
+      report: detail.report ? normalizeReport(detail.report) : null,
+      agent_trace: Array.isArray(detail.agent_trace) ? detail.agent_trace : [],
+      group_discussions: Array.isArray(detail.group_discussions) ? detail.group_discussions : [],
+      messages: Array.isArray(detail.messages) ? detail.messages : []
+    })
+  );
 }
 

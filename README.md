@@ -1,12 +1,12 @@
-# Workplace Survival Capsule
+# 基于LLM Multi-Agent的职场情境能力评估系统
 
-Workplace Survival Capsule 是一个基于 LLM Multi-Agent 的职场情境行为观察与反馈原型。用户在高压职场场景中与多名角色对话，系统通过规则门控、追问调度、证据覆盖跟踪和 Judge Agent 多次采样，生成可追溯的行为观察报告。
+基于LLM Multi-Agent的职场情境能力评估系统是一个职场情境行为观察与反馈原型。用户在高压职场场景中与多名角色对话，系统通过规则门控、追问调度、证据覆盖跟踪和 Judge Agent 多次采样，生成可追溯的行为观察报告。
 
 当前版本适合原型演示、流程验证和研究数据采集。报告输出是情境行为观察反馈，不应单独用于招聘、晋升、淘汰、绩效处罚等高风险人事决策。
 
 ## 功能概览
 
-- 两个内置职场压力场景：项目交付危机、餐厅客诉危机。
+- 五个内置评估情境：项目交付危机（周三下午的会议室）、客诉危机（8号桌的客人）、服务事故（零点大促的故障工单）、管理接盘（接手的第三周）、新人需求对接（入职第一周的需求对接）。
 - Multi-Agent 对话流程：Response Quality Gate、Director、NPC 角色、Group Discussion、Judge Agent。
 - SSE 流式聊天：NPC 回复逐 token 展示。
 - 报告生成进度：报告阶段、Judge 采样进度、延迟等待提示。
@@ -14,6 +14,14 @@ Workplace Survival Capsule 是一个基于 LLM Multi-Agent 的职场情境行为
 - 管理后台：仪表盘、场景配置、提示词编辑、会话回放、群聊校验记录和报告查看。
 - 本地 mock 模式：不需要大模型 API key，也不消耗 API 额度。
 - SQLite 本地数据库：不需要 Docker 或 PostgreSQL。
+
+## 应用场景与目标用户
+
+MAAT 的情境按适用对象设计（详见 `docs/应用场景与目标用户.md`）：
+
+1. **校招（应届生 → 执行/专业岗）**：执行层情境「入职第一周的需求对接」——受测者角色与应届生职级一致，观察需求澄清、边界表达、求助担当。
+2. **中层选拔 / 管理者培训**：管理岗情境——「周三下午的会议室」「接手的第三周」（任务推进型，向上对齐、资源协调、团队管理）；「8号桌的客人」「零点大促的故障工单」（现场危机型，一线运营与危机指挥）。选拔直接使用与目标岗位层级一致的情境；培训配套发展建议，支持测评 → 教练面谈 → 复测闭环。
+3. **高校教学**：组织行为学、人才测评课程教学工具，离线便携版 + 本地 mock 模式用于课堂角色扮演实训，管理后台可自定义任务卡与提示词。
 
 ## 技术栈
 
@@ -39,6 +47,21 @@ workplace-survival-capsule/
 ```
 
 ## 本地快速启动
+
+### Windows 便携版
+
+最新便携压缩包在 [GitHub Releases](https://github.com/xianghaoyu2001/workplace-survival-capsule/releases/latest) 下载。解压后双击 `START.bat`，无需安装 Node.js。默认使用离线 mock，API key 为空，管理密钥在每次启动时临时生成。发布包只包含五个默认场景和八个提示词，不包含本机测评数据。
+
+源码包含便携启动器和 `scripts/build-portable.cjs`。重新打包前先运行下方构建与测试命令，并将 Windows Node.js 运行时放入 `portable-release/runtime/node.exe`（该二进制不提交到 Git）。执行：
+
+```powershell
+node scripts/build-portable.cjs windows-test
+node scripts/test-portable.cjs portable-release/windows-test
+node scripts/build-portable.cjs windows-release
+Compress-Archive -Path portable-release/windows-release/* -DestinationPath portable-release/windows-release.zip
+```
+
+冒烟测试会写入测试会话，因此必须在独立测试目录中运行，正式发布时使用另一个全新目录。打包脚本不复制本机 `.env` 或已有数据库。
 
 Windows 用户可以直接使用批处理脚本：
 

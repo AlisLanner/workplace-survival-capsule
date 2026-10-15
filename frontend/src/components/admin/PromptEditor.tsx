@@ -25,32 +25,47 @@ export function PromptEditor({
   }
 
   return (
-    <article className="admin-card prompt-editor">
-      <div className="prompt-editor-head">
+    <article className="glass prompt spot">
+      <div className="prompt-top">
         <div>
-          <strong>{prompt.key}</strong>
-          <span>v{prompt.version}</span>
+          <span className="k">{prompt.key}</span>
+          <span className="ver">v{prompt.version}</span>
         </div>
-        <label className="inline-check">
+        <label className={`switch${draft.active ? " on" : ""}`} title={draft.active ? "启用中" : "已停用"}>
           <input
             type="checkbox"
             checked={draft.active}
             onChange={(event) => setDraft({ ...draft, active: event.target.checked })}
+            aria-label="启用"
           />
-          启用
         </label>
       </div>
-      <label>
-        名称
-        <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-      </label>
-      <label>
-        内容
-        <textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} />
-      </label>
-      <button onClick={save} disabled={saving}>
-        {saving ? "保存中" : "保存提示词"}
-      </button>
+      <div className="nm">{draft.name}</div>
+      <pre>{draft.content}</pre>
+      <details>
+        <summary>编辑</summary>
+        <div className="admin-form">
+          <label className="f-label">
+            名称
+            <input
+              className="f-input"
+              value={draft.name}
+              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+            />
+          </label>
+          <label className="f-label">
+            内容
+            <textarea
+              className="f-textarea"
+              value={draft.content}
+              onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+            />
+          </label>
+          <button className="btn btn-gold" onClick={save} disabled={saving}>
+            {saving ? "保存中" : "保存"}
+          </button>
+        </div>
+      </details>
     </article>
   );
 }

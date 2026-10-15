@@ -60,6 +60,7 @@ model AssessmentSession {
   scenario         Scenario  @relation(fields: [scenarioId], references: [id])
   messages         Message[]
   groupDiscussions AgentGroupDiscussion[]
+  agentTraceEvents AgentTraceEvent[]
 
   @@index([scenarioId])
   @@index([userId])
@@ -93,4 +94,24 @@ model AgentGroupDiscussion {
   session     AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, roundIndex])
+}
+
+model AgentTraceEvent {
+  id          String   @id @default(cuid())
+  sessionId   String
+  runId       String
+  nodeId      String
+  agentName   String
+  eventType   String
+  status      String
+  summary     String?
+  payloadJson String?
+  elapsedMs   Int?
+  sequence    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  session     AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, sequence])
+  @@index([runId])
 }
