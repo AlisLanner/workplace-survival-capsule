@@ -10,7 +10,7 @@ export const executionIdentity=(()=>{
   let code_sha="unknown",code_dirty=true;
   try{code_sha=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8",windowsHide:true}).trim();code_dirty=!!execFileSync("git",["status","--porcelain"],{encoding:"utf8",windowsHide:true}).trim();}catch{}
   const extension=__filename.endsWith(".ts")?".ts":".js";
-  const module_hashes=Object.fromEntries(["audit","agents","judge","session"].map(name=>{try{return [name,hash(fs.readFileSync(path.join(__dirname,name+extension),"utf8"))];}catch{return [name,"unknown"];}}));
+  const module_hashes=Object.fromEntries(["audit","agents","judge","session","evidenceProtocol"].map(name=>{try{return [name,hash(fs.readFileSync(path.join(__dirname,name+extension),"utf8"))];}catch{return [name,"unknown"];}}));
   return {code_sha,code_dirty,module_hashes};
 })();
 export const callContext=new AsyncLocalStorage<{sessionId:string;runId:string;assessmentVersion?:string}>();

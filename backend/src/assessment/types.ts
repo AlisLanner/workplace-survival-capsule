@@ -42,7 +42,7 @@ export interface ModelConfig {
   director: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean; evidence_scope?: "latest_candidate" };
   npc: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };
   guard: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };
-  judge: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };
+  judge: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean; output_protocol?: "ge8-evidence-ranges/1"; protocol_hash?: string };
   max_attempts: number;
 }
 export interface Snapshot {

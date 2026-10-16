@@ -1,4 +1,4 @@
-// Synthetic loopback only: complete repair diagnostics, report history and retry ownership.
+// Installed v9 disposable copy only (v10 uses verify-ge8-evidence-protocol.cjs). Synthetic loopback: complete repair diagnostics, report history and retry ownership.
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const repo=path.resolve(__dirname,'../..'),[output,database]=process.argv.slice(2);
 if(!output||!database||!/^verification-.*\.db$/.test(path.basename(database)))throw Error('Use output.json and a disposable verification-*.db');
@@ -22,8 +22,9 @@ async function main(){
   res.setHeader('content-type','application/json');res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(sample)}}],usage:{prompt_tokens:1,completion_tokens:1,total_tokens:2}}));
  }catch(e){res.statusCode=500;res.end(e.message);}});
  await new Promise(r=>provider.listen(0,'127.0.0.1',r));process.env.DEEPSEEK_API_KEY='synthetic-loopback-only';
- for(const d of definitions){
-  const start=await startGe8(d.scenario_id,{}),s=await prisma.assessmentSession.findUniqueOrThrow({where:{id:start.session_id}}),state=JSON.parse(s.blackboardState),snapshot=JSON.parse(s.assessmentSnapshotJson);
+ for(const current of definitions){
+  const start=await startGe8(current.scenario_id,{}),s=await prisma.assessmentSession.findUniqueOrThrow({where:{id:start.session_id}}),state=JSON.parse(s.blackboardState),snapshot=JSON.parse(s.assessmentSnapshotJson);
+  assert.equal(snapshot.definition.assessment_version,"ge8-20261016.9","Use an installed v9 copy for legacy protocol verification");const d=snapshot.definition;
   snapshot.model.mock=false;snapshot.model.base_url='http://127.0.0.1:'+provider.address().port;
   const facts=await prisma.message.create({data:{sessionId:s.id,senderType:'agent',senderName:'系统',content:'合成任务事实均已送达',roundIndex:0}});
   for(const f of [...d.public_facts,...Object.values(d.role_facts).flat(),...d.events.flatMap(e=>e.facts)])state.released_facts[f.id]=facts.id;

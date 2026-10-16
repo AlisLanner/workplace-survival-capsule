@@ -1,7 +1,7 @@
 import type { Message, Report } from "../types/assessment";
 import { RadarChart } from "./RadarChart";
 
-const labels={rated:"已评分",not_observed:"未观察",insufficient:"证据不足",scoring_failed:"评分失败"};
+const labels={rated:"已评分",not_observed:"未观察",insufficient:"证据不足",scoring_failed:"评分技术失败"};
 export function Ge8Report({report,messages=[]}:{report:Report;messages?:Message[]}) {
   const dims=report.dimension_results??[];
   const complete=dims.length===8 && dims.every(d=>d.status==="rated" && d.score!==null);
@@ -15,6 +15,7 @@ export function Ge8Report({report,messages=[]}:{report:Report;messages?:Message[
       <h2>统一八维行为观察</h2>
       <p className="small muted">测量版本 {report.assessment_version} · {report.mock_generated?"模拟调试":stable?"评分稳定性检查通过":"建议复核"}</p>
       <p>{report.summary}</p>
+      {report.report_status==="scoring_failed"?<p role="status">评分服务未能完成有效计算，回答已保存；这属于技术问题，不代表作答差或成绩低。</p>:dims.some(d=>d.status==="insufficient")?<p className="small muted">证据不足表示暂时无法作出判断，不按0分计算，也不等同于低分。</p>:null}
       <p><strong>{report.total_score===null?"总分暂不报告":`${report.total_score} / 160`}</strong></p>
       <p className="muted">总分仅为本情境描述性汇总；不同情境、新旧版本不直接比较，不设招聘淘汰线。</p>
       {report.review_reasons?.length?<p className="small">复核原因：{report.review_reasons.map(reviewLabel).join("；")}</p>:null}
