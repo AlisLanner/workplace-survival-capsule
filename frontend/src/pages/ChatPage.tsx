@@ -149,7 +149,9 @@ export function ChatPage() {
   }, [sessionId]);
 
   const currentRound = detail?.session.round ?? 0;
-  const isUserTurn = !sending && !reportGenerating && detail?.session.status === "running";
+  const lastSavedAnswer=messages.filter(m=>["user","agent","system"].includes(m.senderType)).at(-1);
+  const canResume=!!detail?.scenario.assessmentVersion && detail.session.status==="running" && lastSavedAnswer?.senderType==="user" && lastSavedAnswer.roundIndex===detail.session.round;
+  const isUserTurn = !sending && !reportGenerating && !canResume && !error && detail?.session.status === "running";
   const timeWarning = timeRemaining <= WARNING_THRESHOLD && isUserTurn;
 
   // Timer: countdown + timeout handled from a fixed deadline so refreshes and tab throttling do not break it.
@@ -493,6 +495,7 @@ export function ChatPage() {
     }
   }
 
+
   return (
     <main className="wrap chat-wrap">
       {timeWarning ? <div className="time-warning-overlay" /> : null}
@@ -520,6 +523,11 @@ export function ChatPage() {
       </div>
 
       <AgentRunStrip trace={agentTrace} active={sending || reportGenerating} />
+
+      {canResume && !error && !sending && !reportGenerating ? <div className="glass" role="status" style={{padding:16}}>
+        <p>上一条回答已保存，处理尚未完成，无需重新作答。</p>
+        <button type="button" className="btn btn-ghost" onClick={()=>void handleSubmit(lastSavedAnswer!.content,{appendUserMessage:false})}>继续处理上一条回答</button>
+      </div> : null}
 
       {error ? (
         <div className="error-box" role="alert">
@@ -563,7 +571,7 @@ export function ChatPage() {
         </Link>
       ) : (
         <MessageInput
-          disabled={sending || reportGenerating || !detail}
+          disabled={sending || reportGenerating || !detail || canResume || !!error}
           onSubmit={handleSubmit}
           timeRemaining={isUserTurn ? timeRemaining : TURN_TIME_LIMIT}
           timeWarning={timeWarning}

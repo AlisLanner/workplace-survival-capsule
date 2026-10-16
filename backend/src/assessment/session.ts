@@ -53,6 +53,9 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
   let state=JSON.parse(session.blackboardState) as Ge8State;
   if(state.schema_version!==SCHEMA || state.scenario_id!==d.scenario_id || state.assessment_version!==d.assessment_version)throw new Error("会话状态与冻结定义不一致");
   if(session.status!=="running")return {finished:session.status==="finished",reply:{speaker:"测评系统",role:"系统",content:session.status==="finished"?"本次测评已结束。":"评分任务进行中或已中断，请在后台查看状态。"},round:session.round,phase:session.status,report:session.reportJson?JSON.parse(session.reportJson):undefined,blackboard:publicState(state)};
+  const last=session.messages.at(-1);
+  const pending=!!last && ["user","system"].includes(last.senderType) && last.roundIndex===session.round;
+  if(pending && last!.content!==content)throw new Error("上一条回答已保存，尚未处理完成。请先点击继续处理上一条回答，无需重新作答。");
   const legacy=snapshot.runtime?null:await legacyScenario(session.scenario);
   const runtime=snapshot.runtime??{group_chat_enabled:legacy!.groupChatEnabled,group_chat_rounds:JSON.parse(legacy!.groupChatRounds)};
   const lock=`${process.pid}:${randomUUID()}`;const claimed=await prisma.assessmentSession.updateMany({where:{id,status:"running",turnLockId:null,round:session.round,blackboardState:session.blackboardState},data:{turnLockId:lock,turnLockedAt:new Date()}});
@@ -70,7 +73,8 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
   try {
     const graph=new StateGraph(ann)
       .addNode("responseQualityGate",node("responseQualityGate",async()=>{
-        expired=evaluateResponseQuality(session.messages,content).shouldTerminate;
+        expired=evaluateResponseQuality(pending?session.messages.filter(m=>m.id!==last!.id):session.messages,content).shouldTerminate;
+        if(pending)return; // Resume the saved turn; do not insert the answer or consume another round.
         state.round=session.round+1;
         const m=await prisma.$transaction(async tx=>{
           const m=await tx.message.create({data:{sessionId:id,senderType:expired?"system":"user",senderName:expired?"计时系统":"候选人",content,roundIndex:state.round}});
@@ -79,10 +83,16 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
       }))
       .addNode("director",node("director",async()=>{
         if(expired){finish=true;return;}
-        const result=await director(snapshot,state,nextProbe(d,state),messages);
-        const errors=recordEvidence(result.slot_evidence,d,state,messages);if(errors.length)throw new Error(errors.join("；"));
-        directorFinish=result.should_finish;
-        suggestion=result.next_probe;
+        try {
+          const result=await director(snapshot,state,nextProbe(d,state),messages);
+          const nextState=structuredClone(state);
+          const errors=recordEvidence(result.slot_evidence,d,nextState,messages);if(errors.length)throw new Error(errors.join("；"));
+          state=nextState;directorFinish=result.should_finish;suggestion=result.next_probe;
+        } catch {
+          // Reject the whole invalid extraction; scheduling needs no fabricated evidence or additional Director call.
+          await trace("directorRecovery","completed","本轮自动取证未通过，已保留回答；按冻结任务继续追问，缺失不记0，最终由独立评分核对原话。");
+          directorFinish=false;suggestion=undefined;
+        }
         finish=state.round>=state.max_round || (state.round>=state.min_round && directorFinish && coverage(d,state).complete);
       }))
       .addNode("groupGuard",node("groupGuard",async()=>{
