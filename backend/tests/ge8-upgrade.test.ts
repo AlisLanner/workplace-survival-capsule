@@ -30,7 +30,7 @@ describe("versioned content and full configuration freeze",()=>{
   });
   it("retains only the explicitly archived unsealed format, rejects unsealed new versions",()=>{
     for(const version of ["ge8-20261016.2",definitions[0].assessment_version]){
-      const d=getDefinition(definitions[0].scenario_id,version);const s={schema_version:d.schema_version,definition:d,definition_hash:hash(d),code_sha:"old",prompts:{},prompt_bundle_hash:hash({}),model:modelConfig()};
+      const d=getDefinition(definitions[0].scenario_id,version);const s={schema_version:d.schema_version,definition:d,definition_hash:hash(d),code_sha:"old",prompts:{},prompt_bundle_hash:hash({}),model:modelConfig(version)};
       if(version.endsWith(".2"))expect(()=>readSnapshot(JSON.stringify(s))).not.toThrow();else expect(()=>readSnapshot(JSON.stringify(s))).toThrow();
     }
   });

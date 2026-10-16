@@ -10,20 +10,20 @@ async function main(){
  await new Promise(r=>server.once('listening',r));
  provider=http.createServer(async(req,res)=>{try{
   let body='';for await(const c of req)body+=c;const request=JSON.parse(body),input=JSON.parse(request.messages[1].content);requests++;
-  assert.equal(input.evidence_protocol,'ge8-evidence-ranges/1');assert(input.candidate_catalog_hash);assert(input.messages.filter(m=>m.senderType==='user').every(m=>!('content' in m)&&Array.isArray(m.candidate_segments)));
+  assert.equal(input.evidence_protocol,'ge8-evidence-ranges/2');assert(input.candidate_catalog_hash);assert(input.messages.filter(m=>m.senderType==='user').every(m=>!('content' in m)&&Array.isArray(m.candidate_segments)));
   let sample=structuredClone(samples.get(input.definition.scenario_id)),raw;
   if(input.repair){assert(input.repair.previous_response);assert(input.repair.validation_issues.length);assert(!input.repair.candidate_source_fragments);raw=JSON.stringify(sample);}
   else {
    const n=firstByScene.get(input.definition.scenario_id)||0;firstByScene.set(input.definition.scenario_id,n+1);
-   if(n===0)raw='{"evaluations":[],"evaluations":'+JSON.stringify(sample.evaluations)+'}';
-   else {sample.evaluations[0][3][0][0][0]='NPC-or-other-session';raw=JSON.stringify(sample);}
+   if(n===0)raw='{"scores":[],"scores":'+JSON.stringify(sample.scores)+',"evidence":'+JSON.stringify(sample.evidence)+'}';
+   else {sample.evidence[0][1]='NPC-or-other-session';raw=JSON.stringify(sample);}
   }
   res.setHeader('content-type','application/json');res.end(JSON.stringify({choices:[{message:{content:raw}}],usage:{prompt_tokens:1,completion_tokens:1,total_tokens:2}}));
  }catch(e){res.statusCode=500;res.end(e.message);}});
  await new Promise(r=>provider.listen(0,'127.0.0.1',r));process.env.DEEPSEEK_API_KEY='synthetic-loopback-only';
  for(const d of definitions){
   const start=await startGe8(d.scenario_id,{}),s=await prisma.assessmentSession.findUniqueOrThrow({where:{id:start.session_id}}),state=JSON.parse(s.blackboardState),snapshot=JSON.parse(s.assessmentSnapshotJson);
-  snapshot.model.mock=false;snapshot.model.base_url='http://127.0.0.1:'+provider.address().port;assert.equal(snapshot.model.judge.output_protocol,'ge8-evidence-ranges/1');
+  snapshot.model.mock=false;snapshot.model.base_url='http://127.0.0.1:'+provider.address().port;assert.equal(snapshot.model.judge.output_protocol,'ge8-evidence-ranges/2');
   const facts=await prisma.message.create({data:{sessionId:s.id,senderType:'agent',senderName:'系统',content:'合成任务事实与观察机会已提供',roundIndex:0}});
   for(const f of [...d.public_facts,...Object.values(d.role_facts).flat(),...d.events.flatMap(e=>e.facts)])state.released_facts[f.id]=facts.id;
   for(const slot of d.slots)state.slots[slot.slot_id].opportunities=[{question_message_id:facts.id,fact_ids:slot.required_fact_ids,round:0}];
@@ -31,7 +31,7 @@ async function main(){
   const user=await prisma.message.create({data:{sessionId:s.id,senderType:'user',senderName:'候选人',content:quotes.join('\n'),roundIndex:15}});
   const messages=await prisma.message.findMany({where:{sessionId:s.id},orderBy:[{roundIndex:'asc'},{createdAt:'asc'}]}),segments=[...candidateCatalog(messages).segments.values()];
   const refs=quotes.map(q=>{const start=user.content.indexOf(q),end=start+q.length;return [segments.find(s=>s.start===start).id,segments.find(s=>s.end===end).id,'sufficient','support','对应独立行为'];});
-  samples.set(d.scenario_id,{evaluations:d.dimensions.map((dim,i)=>[dim.id,14,'两个点的共同分档依据',[[refs[i*2]],[refs[i*2+1]]]])});
+  samples.set(d.scenario_id,{scores:d.dimensions.map(dim=>[dim.id,14,'两个点的共同分档依据']),evidence:d.slots.map((slot,i)=>[slot.display_code,...refs[i]])});
   state.round=15;state.phase='finished';const snapshotRaw=JSON.stringify(sealSnapshot(snapshot)),previous=aggregateSamples([],snapshot,state);
   await prisma.assessmentSession.update({where:{id:s.id},data:{status:'finished',round:15,assessmentSnapshotJson:snapshotRaw,blackboardState:JSON.stringify(state),reportJson:JSON.stringify(previous),scoringRunId:'2147483647:previous',scoringAttempts:1}});
   const outcomes=await Promise.allSettled([retryScoring(s.id),retryScoring(s.id)]);assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);

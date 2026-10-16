@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { BUNDLE, hash, PROMPT_NAMES, SCHEMA, VERSION } from "./definitions";
 import type { Definition, ModelConfig, Snapshot } from "./types";
 import type { Scenario } from "@prisma/client";
-import { EVIDENCE_PROTOCOL, EVIDENCE_PROTOCOL_HASH, requiresEvidenceRanges } from "./evidenceProtocol";
+import { protocolForVersion, evidenceProtocolHash } from "./evidenceProtocol";
 
 export function frozenScenario(scenario:Scenario,raw:string|null):Scenario {
   const s=readSnapshot(raw);const d=s.definition;
@@ -13,12 +13,13 @@ export function frozenScenario(scenario:Scenario,raw:string|null):Scenario {
 }
 
 export function modelConfig(version=VERSION):ModelConfig {
+  const protocol=protocolForVersion(version);
   const fast=process.env.DEEPSEEK_FAST_MODEL||"deepseek-v4-flash";
   return {mock:process.env.USE_MOCK_LLM==="true",base_url:process.env.DEEPSEEK_BASE_URL||"https://api.deepseek.com",fast_model:fast,judge_model:process.env.DEEPSEEK_JUDGE_MODEL||process.env.DEEPSEEK_FAST_MODEL||process.env.DEEPSEEK_STRONG_MODEL||fast,
     director:{temperature:0.15,max_tokens:6000,timeout_ms:90000,thinking:false,evidence_scope:"latest_candidate"},
     npc:{temperature:0.65,max_tokens:900,timeout_ms:90000,thinking:false},
     guard:{temperature:0.1,max_tokens:1800,timeout_ms:90000,thinking:false},
-    judge:{temperature:0.1,max_tokens:30000,timeout_ms:240000,thinking:true,...(requiresEvidenceRanges(version)?{output_protocol:EVIDENCE_PROTOCOL,protocol_hash:EVIDENCE_PROTOCOL_HASH}:{})},max_attempts:2};
+    judge:{temperature:0.1,max_tokens:30000,timeout_ms:240000,thinking:true,...(protocol?{output_protocol:protocol,protocol_hash:evidenceProtocolHash(protocol)}:{})},max_attempts:2};
 }
 export function sealSnapshot(snapshot:Snapshot):Snapshot {
   const {snapshot_hash:_,...body}=snapshot;
@@ -49,7 +50,7 @@ export function readSnapshot(raw:string|null):Snapshot {
     if(!snapshot_hash || snapshot_hash!==hash(body) || !s.runtime)throw new Error("完整会话快照校验失败，停止续测");
   } else if(s.definition.assessment_version!=="ge8-20261016.2")throw new Error("新版会话缺少完整配置快照");
   const protocol=s.model.judge.output_protocol;
-  if((protocol!==undefined && (protocol!==EVIDENCE_PROTOCOL || s.model.judge.protocol_hash!==EVIDENCE_PROTOCOL_HASH)) || (protocol===undefined && s.model.judge.protocol_hash!==undefined) || (requiresEvidenceRanges(s.definition.assessment_version) && protocol!==EVIDENCE_PROTOCOL))throw new Error("评分引用协议缺失或不受支持，停止续测");
+  if(protocol!==protocolForVersion(s.definition.assessment_version) || (protocol!==undefined && s.model.judge.protocol_hash!==evidenceProtocolHash(protocol)) || (protocol===undefined && s.model.judge.protocol_hash!==undefined))throw new Error("评分引用协议缺失或不受支持，停止续测");
   return s;
 }
 export function publicMeta(s:Snapshot) {

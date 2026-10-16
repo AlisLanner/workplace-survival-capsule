@@ -1,7 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from "vitest";
 vi.mock("../src/services/llm.service",()=>({callDeepSeek:vi.fn()}));
 import {callDeepSeek} from "../src/services/llm.service";
-import {candidateCatalog,decodeJudgeRanges,EVIDENCE_PROTOCOL,EVIDENCE_PROTOCOL_HASH} from "../src/assessment/evidenceProtocol";
+import {candidateCatalog,decodeJudgeRanges,EVIDENCE_PROTOCOL,EVIDENCE_PROTOCOL_HASH} from "../src/assessment/evidenceProtocolV1";
 import {definitions,getDefinition,hash} from "../src/assessment/definitions";
 import {initialState} from "../src/assessment/coverage";
 import {judge,validateSample} from "../src/assessment/judge";
@@ -10,7 +10,7 @@ import {strictJson} from "../src/assessment/strictJson";
 import type {Snapshot,TranscriptMessage} from "../src/assessment/types";
 const call=vi.mocked(callDeepSeek);
 function fixture(index=0){
- const d=definitions[index],state=initialState(d),quotes=d.slots.map((_,i)=>`具体行为${i+1}：我核对对应事实，再明确自己的实际行动。`);
+ const d=getDefinition(definitions[index].scenario_id,"ge8-20261016.10"),state=initialState(d),quotes=d.slots.map((_,i)=>`具体行为${i+1}：我核对对应事实，再明确自己的实际行动。`);
  const messages:TranscriptMessage[]=[{id:"facts",senderType:"agent",senderName:"系统",content:"任务事实已提供",roundIndex:0},{id:"answer",senderType:"user",senderName:"候选人",content:quotes.join("\n"),roundIndex:15}];
  for(const f of [...d.public_facts,...Object.values(d.role_facts).flat(),...d.events.flatMap(e=>e.facts)])state.released_facts[f.id]="facts";
  for(const slot of d.slots)state.slots[slot.slot_id].opportunities=[{question_message_id:"facts",fact_ids:slot.required_fact_ids,round:0}];
@@ -18,7 +18,7 @@ function fixture(index=0){
  const ranges=quotes.map(quote=>{const start=messages[1].content.indexOf(quote),end=start+quote.length;return [segments.find(s=>s.start===start)!.id,segments.find(s=>s.end===end)!.id,"sufficient","support","可核对的独立行为"]});
  const wire:any={evaluations:d.dimensions.map((dim,i)=>[dim.id,14,"本维两个点共同支持此分档",[[ranges[i*2]],[ranges[i*2+1]]]])};
  const prompts={judge:{key:"test/ranges",content:"frozen range protocol",hash:hash("frozen range protocol")}};
- const snapshot:Snapshot=sealSnapshot({schema_version:d.schema_version,definition:d,definition_hash:hash(d),code_sha:"test",prompts,prompt_bundle_hash:hash(prompts),model:{...modelConfig(),mock:false},runtime:{group_chat_enabled:true,group_chat_rounds:[3,6]}});
+ const snapshot:Snapshot=sealSnapshot({schema_version:d.schema_version,definition:d,definition_hash:hash(d),code_sha:"test",prompts,prompt_bundle_hash:hash(prompts),model:{...modelConfig(d.assessment_version),mock:false},runtime:{group_chat_enabled:true,group_chat_rounds:[3,6]}});
  return {d,state,messages,catalog,wire,snapshot};
 }
 describe("server-owned candidate evidence ranges",()=>{

@@ -8,11 +8,12 @@ import v6 from "./versions/ge8-20261016.6.json";
 import v7 from "./versions/ge8-20261016.7.json";
 import v8 from "./versions/ge8-20261016.8.json";
 import v9 from "./versions/ge8-20261016.9.json";
+import v10 from "./versions/ge8-20261016.10.json";
 import { calibration } from "./calibration";
 import type { AgentName } from "../types/agent";
 import type { Definition, DimensionId, Fact } from "./types";
 
-export const VERSION = "ge8-20261016.10";
+export const VERSION = "ge8-20261016.11";
 export const SCHEMA = "ge8/1";
 export const BUNDLE = `${VERSION}/r01`;
 export const PROMPT_NAMES = ["director", "leader", "coworker", "client", "group-discussion", "judge", "behavior-detector", "stage-director"] as const;
@@ -93,7 +94,7 @@ export const definitions: Definition[] = scenarios.map(s => {
 
 export function hash(value: unknown): string { return createHash("sha256").update(typeof value === "string" ? value : JSON.stringify(value)).digest("hex"); }
 export function getDefinition(id: string, version=VERSION): Definition {
-  const d=[...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
+  const d=[...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[],...v10 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
   if(!d) throw new Error(`未安装或不支持的测量定义：${id}/${version}`);
   return structuredClone(d);
 }
@@ -109,4 +110,4 @@ export function validateDefinitions(list=definitions) {
     }
   }
 }
-validateDefinitions([...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[]]);
+validateDefinitions([...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[],...v10 as Definition[]]);
