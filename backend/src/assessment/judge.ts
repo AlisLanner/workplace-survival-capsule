@@ -1,5 +1,5 @@
 import { callDeepSeek } from "../services/llm.service";
-import { auditedCall } from "./audit";
+import { auditedCall, executionIdentity } from "./audit";
 import { coverage, locateEvidence, opportunityFor } from "./coverage";
 import { strictJson } from "./strictJson";
 import { publicMeta } from "./runtime";
@@ -21,13 +21,13 @@ export function validateSample(input:unknown,d:Definition,state:Ge8State,message
       if(!slot || slot.slot_id!==slots[j].slot_id || !["none","partial","sufficient"].includes(slot.sufficiency) || !Array.isArray(slot.evidence))throw new Error("观察点错序、重复或非法");
       if(![null,"support","counter","mixed"].includes(slot.valence))throw new Error("观察点表现方向无效");
       const evidence=slot.evidence.map(e=>{if(e.slot_id!==slot.slot_id)throw new Error("证据指向不同观察点");return locateEvidence(e,d,state,messages);});
-      if(slot.sufficiency==="sufficient" && !evidence.some(e=>e.sufficiency==="sufficient"))throw new Error("充分观察点必须有可判断原话");
+      if(slot.sufficiency==="sufficient" && !evidence.some(e=>e.sufficiency==="sufficient"))throw new Error(`充分观察点必须有可判断原话：${slot.slot_id}外层为sufficient，但evidence中没有sufficient。依据实际原话独立判断，无法判断则外层和维度都保留缺失，不能强行rated。`);
       if(slot.sufficiency==="none" && evidence.length)throw new Error("未观察点不能携带证据");
       if(evidence.length && slot.valence===null)throw new Error(`证据缺少正负方向：${slot.slot_id}有证据时slot_results.valence必须为support/counter/mixed，不可为null`);
       if(evidence.some(e=>e.sufficiency==="none"))throw new Error("不可判断片段不应作为评分证据");
       if(evidence.length && ((slot.valence==="support" && evidence.every(e=>e.valence==="counter")) || (slot.valence==="counter" && evidence.every(e=>e.valence==="support"))))throw new Error("观察点方向与引用反向矛盾");
       const opportunity=evidence.length?opportunityFor(slot.slot_id,state,d):(state.slots[slot.slot_id]?.opportunities??[]);
-      if(dim.status==="rated" && (slot.sufficiency!=="sufficient" || !opportunity.length))throw new Error("缺少充分机会与两点证据不能评分");
+      if(dim.status==="rated" && (slot.sufficiency!=="sufficient" || !opportunity.length))throw new Error(`缺少充分机会与两点证据不能评分：${def.id}/${slot.slot_id}充分性为${slot.sufficiency}，机会数${opportunity.length}。两个点都充分且有真实机会才rated，否则维度score为null。`);
       for(const e of evidence){const key=e.message_id+":"+e.quote;const other=usedQuotes.get(key);if(other && other!==dim.id)throw new Error("同一原话片段跨维重复取证，需指出独立行为片段");usedQuotes.set(key,dim.id);}
       return {slot_id:slot.slot_id,opportunity,sufficiency:slot.sufficiency,valence:slot.valence,evidence};
     });
@@ -73,7 +73,7 @@ export function aggregateSamples(samples:JudgeSample[],snapshot:Snapshot,state:G
     report_status:status,level:"本次行为观察",summary:`本情境八维中${c.covered_dimensions.length}维具有五份合法的可评分结果。${snapshot.model.mock?"本报告由模拟器生成，仅用于程序检查。":"结果仅表示本次情境中的判断和行为表达。"}`,
     conflict_style:"仅依据本情境原话描述，不作人格诊断。",strengths:[],risks:review,suggestions:["结合逐点原话和任务条件进行人工复核。"],final_recommendation:"本结果为人工面试和复核提供线索，不设置招聘淘汰线；新旧版本及跨情境分数不能直接比较。",
     evidence:results.flatMap(r=>r.slot_results.flatMap(s=>s.evidence.map(e=>({dimension:r.name,message_id:e.message_id,quote:e.quote,analysis:e.reason})))),
-    mock_generated:snapshot.model.mock,human_review_required:status!=="confident",human_review_reason:review.join("；"),review_reasons:review,sampling_stats:stats,assessment_meta:publicMeta(snapshot),coverage_status:c};
+    mock_generated:snapshot.model.mock,human_review_required:status!=="confident",human_review_reason:review.join("；"),review_reasons:review,sampling_stats:stats,assessment_meta:{...publicMeta(snapshot),scoring_execution:executionIdentity},coverage_status:c};
 }
 
 export function mockSample(snapshot:Snapshot,state:Ge8State):JudgeSample {
@@ -91,7 +91,8 @@ export async function judge(snapshot:Snapshot,state:Ge8State,messages:Transcript
       const started=Date.now();
       try {
         const params=snapshot.model.judge;
-        const result=snapshot.model.mock?validateSample(mockSample(snapshot,state),snapshot.definition,state,messages):await auditedCall(`judge/${sample}/${attempt}`,{systemPrompt:snapshot.prompts.judge.content,userPrompt:JSON.stringify({definition:snapshot.definition,opportunities:state.slots,released_facts:state.released_facts,messages,...(validationError?{repair:{validation_error:validationError,instruction:"按原契约重新输出完整合法JSON。不得编造原话，无法判断的维度保留null。"}}:{})}),model:snapshot.model.judge_model,temperature:params.temperature,maxTokens:params.max_tokens,thinking:params.thinking,timeoutMs:params.timeout_ms,baseUrl:snapshot.model.base_url,maxAttempts:1,allowMockFallback:false},raw=>validateSample(strictJson(raw),snapshot.definition,state,messages));
+        const opportunities=Object.fromEntries(Object.entries(state.slots).map(([id,s])=>[id,{opportunities:s.opportunities}]));
+        const result=snapshot.model.mock?validateSample(mockSample(snapshot,state),snapshot.definition,state,messages):await auditedCall(`judge/${sample}/${attempt}`,{systemPrompt:snapshot.prompts.judge.content,userPrompt:JSON.stringify({definition:snapshot.definition,opportunities,released_facts:state.released_facts,messages,...(validationError?{repair:{validation_error:validationError,instruction:"按原契约重新输出完整合法JSON。不得编造原话，无法判断的维度保留null。"}}:{})}),model:snapshot.model.judge_model,temperature:params.temperature,maxTokens:params.max_tokens,thinking:params.thinking,timeoutMs:params.timeout_ms,baseUrl:snapshot.model.base_url,maxAttempts:1,allowMockFallback:false},raw=>validateSample(strictJson(raw),snapshot.definition,state,messages));
         attempts.push({sample,attempt,ok:true,elapsed_ms:Date.now()-started});progress?.(++count);return result;
       }catch(error){validationError=(error instanceof Error?error.message:String(error)).slice(0,400);attempts.push({sample,attempt,ok:false,error:validationError,elapsed_ms:Date.now()-started});}
     }

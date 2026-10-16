@@ -15,7 +15,7 @@ export function Ge8Report({report,messages=[]}:{report:Report;messages?:Message[
       <p className="muted">总分仅为本情境描述性汇总；不同情境、新旧版本不直接比较，不设招聘淘汰线。</p>
       {report.review_reasons?.length?<p className="small">复核原因：{report.review_reasons.join("；")}</p>:null}
       {complete?<div style={{maxWidth:460,margin:"0 auto"}}><RadarChart data={dims.map(d=>({name:d.name,score:d.score!,max:20}))}/></div>:<p className="muted">存在未评分维度，暂不绘制完整雷达图。</p>}
-      {typeof report.sampling_stats?.variance==="number"?<p className="small muted">五次评分总分方差 {report.sampling_stats.variance}。重复评分稳定性不代表测量效度。</p>:null}
+      {typeof report.sampling_stats?.variance==="number"&&Number.isFinite(report.sampling_stats.variance)?<p className="small muted">五次评分总分方差 {Number(report.sampling_stats.variance.toFixed(2))}。重复评分稳定性不代表测量效度。</p>:null}
     </section>
     <div className="ge8-dimensions">
       {dims.map(dim=><section className="glass" key={dim.id} style={{padding:24,minWidth:0}}>

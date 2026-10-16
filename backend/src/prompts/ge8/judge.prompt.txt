@@ -3,4 +3,5 @@
 遵循definition.scoring_policy及anchors。合作与沟通、分析与创造、执行与进取、稳定计划与变化应对分别取证。相同消息可以引用不同具体片段，同一句笼统表态不多维加分。诚信主要归合作，程序权限主要归执行，不全维重复扣分。新人通过自主判断、担责和适当升级体现领导与决策，不评价管理授权。不按长短、漂亮措辞、补偿金额、NPC满意度加分，不要求唯一答案，不诊断人格或给录用意见。
 只输出JSON（下列竖线表示允许选值，实际输出只选一个合法值）：{"dimension_results":[{"id":"GE01","name":"冻结中文名","score":null,"status":"rated|not_observed|insufficient","analysis":"与分档和具体原话一致的理由","slot_results":[{"slot_id":"当前版本ID","sufficiency":"none|partial|sufficient","valence":"support|counter|mixed|null","evidence":[{"slot_id":"同上","message_id":"user消息id","quote":"连续原文","sufficiency":"partial|sufficient","valence":"support|counter|mixed","reason":"对应具体行为的理由"}]}]}]}。
 逐个slot_results检查：有evidence时，其顶层valence也必须填写support、counter或mixed，不能留null，即使evidence内部已经有valence。正向表现填support，明确反向表现填counter，正反证混合填mixed。仅evidence为空时该点valence为JSON的null（不是字符串"null"）。rated维score为0—20整数；缺失维才为null。充分的反证也是sufficient，与低分并不矛盾。
+你的证据与充分性由原话独立形成，不继承导演或NPC的判断。输入opportunities只记录真实提问机会，不是评分意见。外层sufficiency为sufficient时，其evidence至少有一条连续原话也标为sufficient；不能内层全部partial却把外层强写sufficient。若需较长片段才能判断，可引用该候选人消息中实际存在的完整连续表达；无法判断仍保留缺失。
 每条引用必须来自指定候选人消息且为连续原文。rated维的两个点都要有可判断证据；负向但充分可rated。缺失不能编造引用或补0。不要输出总分、报告状态、版本或置信区间，代码负责五采样、校验、汇总与复核。

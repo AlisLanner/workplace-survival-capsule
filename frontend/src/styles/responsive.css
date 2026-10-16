@@ -23,3 +23,10 @@
   .chat-wrap{padding:40px 22px 80px;}
   .thread .msg{max-width:92%;}
 }
+
+@media (max-width:600px){
+  .nav-inner{height:auto;min-height:62px;flex-wrap:wrap;gap:8px;padding-top:12px;padding-bottom:12px;}
+  .brand{font-size:15px;gap:8px;max-width:100%;}
+  .nav-links{width:100%;justify-content:space-between;overflow-x:visible;gap:16px;}
+  .nav-links a{font-size:13px;}
+}
