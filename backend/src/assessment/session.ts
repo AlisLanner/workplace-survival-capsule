@@ -121,7 +121,7 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
       .addNode("judge",node("judge",async()=>{
         if(!finish)return;const run=await claimScoring(id);state.phase="finished";
         events?.onJudging?.();
-        report=await judge(snapshot,state,messages,n=>events?.onReportProgress?.({stage:"judge_sampling",current:n,total:5,percent:10+n*15,message:`已完成${n}/5路评分`}));
+        report=await callContext.run({sessionId:id,runId:run,assessmentVersion:d.assessment_version},()=>judge(snapshot,state,messages,n=>events?.onReportProgress?.({stage:"judge_sampling",current:n,total:5,percent:10+n*15,message:`已完成${n}/5路评分`})));
         await saveReport(id,run,report,state);
         events?.onReportProgress?.({stage:"done",percent:100,message:"报告已保存"});
       }))

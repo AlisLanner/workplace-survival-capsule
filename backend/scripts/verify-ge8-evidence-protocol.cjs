@@ -4,15 +4,16 @@ const repo=path.resolve(__dirname,'../..'),[output,database]=process.argv.slice(
 if(!output||!database||!/^verification-.*\.db$/.test(path.basename(database)))throw Error('Use private output.json and disposable verification-*.db');
 const {server,prisma}=require(path.join(repo,'scripts/local-server.cjs')).startLocal({port:0,database,mode:'mock'});
 const get=n=>require(path.join(repo,'backend/dist/src/assessment',n+'.js'));
-const {definitions}=get('definitions'),{startGe8,retryScoring}=get('session'),{sealSnapshot}=get('runtime'),{candidateCatalog}=get('evidenceProtocol'),{aggregateSamples,validateSample}=get('judge');
-let provider,requests=0;const checks=[],samples=new Map(),firstByScene=new Map();
+const {definitions}=get('definitions'),{startGe8,retryScoring,runGe8}=get('session'),{sealSnapshot}=get('runtime'),{candidateCatalog}=get('evidenceProtocol'),{aggregateSamples,validateSample}=get('judge');
+let provider,requests=0,normalFinish=false;const checks=[],samples=new Map(),firstByScene=new Map();
 async function main(){
  await new Promise(r=>server.once('listening',r));
  provider=http.createServer(async(req,res)=>{try{
   let body='';for await(const c of req)body+=c;const request=JSON.parse(body),input=JSON.parse(request.messages[1].content);requests++;
   assert.equal(input.evidence_protocol,'ge8-evidence-ranges/2');assert(input.candidate_catalog_hash);assert(input.messages.filter(m=>m.senderType==='user').every(m=>!('content' in m)&&Array.isArray(m.candidate_segments)));
   let sample=structuredClone(samples.get(input.definition.scenario_id)),raw;
-  if(input.repair){assert(input.repair.previous_response);assert(input.repair.validation_issues.length);assert(!input.repair.candidate_source_fragments);raw=JSON.stringify(sample);}
+  if(normalFinish)raw=JSON.stringify({scores:input.definition.dimensions.map(d=>[d.id,null,'没有候选人行为证据']),evidence:[]});
+  else if(input.repair){assert(input.repair.previous_response);assert(input.repair.validation_issues.length);assert(!input.repair.candidate_source_fragments);raw=JSON.stringify(sample);}
   else {
    const n=firstByScene.get(input.definition.scenario_id)||0;firstByScene.set(input.definition.scenario_id,n+1);
    if(n===0)raw='{"scores":[],"scores":'+JSON.stringify(sample.scores)+',"evidence":'+JSON.stringify(sample.evidence)+'}';
@@ -42,6 +43,15 @@ async function main(){
   const count=requests;await assert.rejects(retryScoring(s.id),/上限/);const view=await fetch('http://127.0.0.1:'+server.address().port+'/api/assessment/session/'+s.id);assert.equal(view.status,200);const text=await view.text();assert(!text.includes('candidate_segments'));assert(!text.includes('assessmentSnapshotJson'));assert.equal(requests,count);
   checks.push(d.scenario_code+': reference-only HTTP wire, invalid references/duplicate keys rejected, bounded repair, exact final citations, preserved snapshot/answers/report, one retry owner, GET/exhausted retry free');
  }
+ normalFinish=true;
+ const start=await startGe8(definitions[0].scenario_id,{}),row=await prisma.assessmentSession.findUniqueOrThrow({where:{id:start.session_id}}),snapshot=JSON.parse(row.assessmentSnapshotJson);
+ snapshot.model.mock=false;snapshot.model.base_url='http://127.0.0.1:'+provider.address().port;
+ await prisma.assessmentSession.update({where:{id:row.id},data:{assessmentSnapshotJson:JSON.stringify(sealSnapshot(snapshot))}});
+ await runGe8(row.id,'__ASSESSMENT_TIME_EXPIRED__');
+ const finished=await prisma.assessmentSession.findUniqueOrThrow({where:{id:row.id}}),normalCalls=await prisma.assessmentCallAudit.findMany({where:{sessionId:row.id}});
+ assert.equal(finished.status,'finished');assert.equal(finished.scoringAttempts,1);assert.equal(normalCalls.length,5);assert(normalCalls.every(a=>a.runId===finished.scoringRunId&&a.kind.startsWith('judge/')));
+ const count=requests;await runGe8(row.id,'__ASSESSMENT_TIME_EXPIRED__');assert.equal(requests,count);
+ checks.push('normal finish: five actual loopback Judge calls bind to the claimed scoring run; repeated finish makes no calls');
  const result={passed:true,external_requests:0,loopback_requests:requests,checks};fs.writeFileSync(output,JSON.stringify(result,null,2));console.log(JSON.stringify(result));
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{provider?.closeAllConnections();provider?.close();server.closeAllConnections();server.close(()=>prisma.$disconnect());});
