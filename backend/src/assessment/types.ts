@@ -39,7 +39,7 @@ export interface Ge8State {
 export interface Probe { agent: AgentName; slot_ids: string[]; questions: string[]; facts: Fact[]; event_ids: string[] }
 export interface ModelConfig {
   mock: boolean; base_url: string; fast_model: string; judge_model: string;
-  director: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };
+  director: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean; evidence_scope?: "latest_candidate" };
   npc: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };
   guard: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };
   judge: { temperature: number; max_tokens: number; timeout_ms: number; thinking: boolean };

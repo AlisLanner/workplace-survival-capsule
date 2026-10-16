@@ -14,7 +14,7 @@ export function frozenScenario(scenario:Scenario,raw:string|null):Scenario {
 export function modelConfig():ModelConfig {
   const fast=process.env.DEEPSEEK_FAST_MODEL||"deepseek-v4-flash";
   return {mock:process.env.USE_MOCK_LLM==="true",base_url:process.env.DEEPSEEK_BASE_URL||"https://api.deepseek.com",fast_model:fast,judge_model:process.env.DEEPSEEK_JUDGE_MODEL||process.env.DEEPSEEK_FAST_MODEL||process.env.DEEPSEEK_STRONG_MODEL||fast,
-    director:{temperature:0.15,max_tokens:2200,timeout_ms:90000,thinking:false},
+    director:{temperature:0.15,max_tokens:6000,timeout_ms:90000,thinking:false,evidence_scope:"latest_candidate"},
     npc:{temperature:0.65,max_tokens:900,timeout_ms:90000,thinking:false},
     guard:{temperature:0.1,max_tokens:1800,timeout_ms:90000,thinking:false},
     judge:{temperature:0.1,max_tokens:30000,timeout_ms:240000,thinking:true},max_attempts:2};

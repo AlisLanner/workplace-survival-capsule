@@ -27,8 +27,14 @@ export async function director(s:Snapshot,state:Ge8State,probe:Probe,messages:Tr
     }
     return {slot_evidence:evidence,should_finish:true};
   }
-  return jsonCall(s,"director","director",agentView("director",s.definition,state,probe,messages),x=>{
+  const incremental=s.model.director.evidence_scope==="latest_candidate";
+  const latest=messages.filter(m=>m.senderType==="user").at(-1);
+  const input=agentView("director",s.definition,state,probe,messages);
+  const request=incremental?{...input,evidence_scope:"latest_candidate",latest_candidate_message_id:latest?.id??null,
+    coverage:Object.fromEntries(Object.entries(state.slots).map(([id,slot])=>[id,{opportunities:slot.opportunities,sufficient:slot.evidence.some(e=>e.sufficiency==="sufficient"),partial:slot.evidence.some(e=>e.sufficiency==="partial")}]))}:input;
+  return jsonCall(s,"director","director",request,x=>{
     if(!Array.isArray(x?.slot_evidence) || typeof x.should_finish!=="boolean")throw new Error("导演契约无效");
+    if(incremental && (x.slot_evidence.length>16 || x.slot_evidence.some((e:Evidence)=>e?.sufficiency!=="none" && e?.message_id!==latest?.id)))throw new Error("只提取latest_candidate_message_id的新增证据，最多16点；历史证据已保留，不重复输出。");
     if(x.next_probe && (!["leader","coworker","client"].includes(x.next_probe.agent) || !Array.isArray(x.next_probe.slot_ids) || x.next_probe.slot_ids.some((id:string)=>!s.definition.slots.some(slot=>slot.slot_id===id && slot.target_agent===x.next_probe.agent))))throw new Error("导演调度了未知槽位或错误角色");
     const evidence=x.slot_evidence.filter((e:Evidence)=>{
       if(!e || !s.definition.slots.some(slot=>slot.slot_id===e.slot_id))throw new Error("未知证据槽位");

@@ -29,4 +29,27 @@ describe("bounded GE8 failures",()=>{
     const f=fixture();f.snapshot.prompts.director=f.snapshot.prompts.judge;call.mockResolvedValueOnce('{} trailing').mockResolvedValueOnce('{"slot_evidence":[],"should_finish":false}');
     await director(f.snapshot,f.state,nextProbe(f.snapshot.definition,f.state),[]);expect(call).toHaveBeenCalledTimes(2);const repaired=JSON.parse(call.mock.calls[1][0].userPrompt);expect(repaired.repair.validation_error).toContain("Trailing JSON content at position");expect(repaired.scenario_id).toBe(f.snapshot.definition.scenario_id);expect(repaired.messages).toEqual([]);
   });
+  it("extracts the latest reply once without echoing historical quotes, while preserving old snapshot behavior",async()=>{
+    const f=fixture();f.snapshot.prompts.director=f.snapshot.prompts.judge;
+    const d=f.snapshot.definition,slot=d.slots[0];for(const fact of d.public_facts)f.state.released_facts[fact.id]="facts";
+    const messages=[{id:"facts",senderType:"agent",senderName:"系统",content:"任务事实",roundIndex:0},{id:"old",senderType:"user",senderName:"候选人",content:"我承担协调责任",roundIndex:1},{id:"latest",senderType:"user",senderName:"候选人",content:"我现在确认下一步安排",roundIndex:15}];
+    const old={slot_id:slot.slot_id,message_id:"old",quote:"我承担协调责任",sufficiency:"sufficient",valence:"support",reason:"已保存历史片段"};
+    f.state.slots[slot.slot_id].evidence=[old as any];
+    const fresh={...old,message_id:"latest",quote:"我现在确认下一步安排",reason:"最新回应"};
+    call.mockResolvedValueOnce(JSON.stringify({slot_evidence:[old],should_finish:false})).mockResolvedValueOnce(JSON.stringify({slot_evidence:[fresh],should_finish:false}));
+    expect((await director(f.snapshot,f.state,nextProbe(d,f.state),messages)).slot_evidence[0].message_id).toBe("latest");
+    const input=JSON.parse(call.mock.calls[0][0].userPrompt);expect(input.latest_candidate_message_id).toBe("latest");expect(input.coverage[slot.slot_id].sufficient).toBe(true);expect(JSON.stringify(input.coverage)).not.toContain("已保存历史片段");
+    expect(JSON.parse(call.mock.calls[1][0].userPrompt).repair.validation_error).toContain("不重复输出");
+    delete f.snapshot.model.director.evidence_scope;call.mockResolvedValueOnce(JSON.stringify({slot_evidence:[old],should_finish:false}));
+    expect((await director(f.snapshot,f.state,nextProbe(d,f.state),messages)).slot_evidence[0].message_id).toBe("old");
+  });
+  it("retains all sixteen distinct observations when one new reply actually supplies them",async()=>{
+    const f=fixture();f.snapshot.prompts.director=f.snapshot.prompts.judge;const d=f.snapshot.definition;
+    for(const fact of [...d.public_facts,...Object.values(d.role_facts).flat(),...d.events.flatMap(e=>e.facts)])f.state.released_facts[fact.id]="facts";
+    const quotes=d.slots.map((s,i)=>`本轮具体行为${i}：依据已知权限作出相应安排。`);
+    const messages=[{id:"facts",senderType:"agent",senderName:"系统",content:"已发送事实和事件",roundIndex:0},{id:"latest",senderType:"user",senderName:"候选人",content:quotes.join("\n"),roundIndex:15}];
+    call.mockResolvedValue(JSON.stringify({next_probe:{agent:"leader",slot_ids:[]},should_finish:true,slot_evidence:d.slots.map((s,i)=>({slot_id:s.slot_id,message_id:"latest",quote:quotes[i],sufficiency:"sufficient",valence:"support",reason:"具体行为"}))}));
+    expect((await director(f.snapshot,f.state,nextProbe(d,f.state),messages)).slot_evidence).toHaveLength(16);
+    expect(call.mock.calls[0][0].maxTokens).toBe(6000);expect(call.mock.calls[0][0].maxAttempts).toBe(1);
+  });
 });
