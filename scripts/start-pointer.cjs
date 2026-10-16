@@ -1,0 +1,11 @@
+const fs=require('node:fs');const path=require('node:path');const http=require('node:http');
+const project=path.resolve(process.argv[2]||path.join(__dirname,'../..'));
+const pointer=JSON.parse(fs.readFileSync(path.join(project,'stable-launch.json'),'utf8'));
+const repo=fs.realpathSync(pointer.repo),database=fs.realpathSync(pointer.database);
+process.chdir(path.join(repo,'backend'));process.env.DATABASE_URL='file:'+database.replaceAll('\\','/');process.env.USE_MOCK_LLM='true';process.env.DEEPSEEK_API_KEY='';
+const express=require(path.join(repo,'node_modules/express'));const {app}=require(path.join(repo,'backend/dist/src/app.js'));const {prisma}=require(path.join(repo,'backend/dist/src/db/prisma.js'));
+const site=express();site.use(express.static(path.join(repo,'frontend/dist')));site.get('*',(_req,res)=>res.sendFile(path.join(repo,'frontend/dist/index.html')));
+const server=http.createServer((req,res)=>/^\/(api(?:\/|$)|health(?:\?|$))/.test(req.url)?app(req,res):site(req,res));
+const port=17863;server.listen(port,'127.0.0.1',()=>console.log(`Stable checkpoint: ${pointer.checkpoint_id}\nCode: ${pointer.code_sha}\nSnapshot: ${pointer.snapshot_time}\nMock only | http://127.0.0.1:${port}`));
+server.on('error',e=>{console.error(e.message);prisma.$disconnect().finally(()=>process.exit(1));});
+process.on('SIGINT',()=>{server.close(()=>prisma.$disconnect().finally(()=>process.exit(0)));server.closeAllConnections();});

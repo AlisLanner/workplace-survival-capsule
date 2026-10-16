@@ -106,7 +106,7 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
         events?.onReportProgress?.({stage:"done",percent:100,message:"报告已保存"});
       }))
       .addEdge(START,"responseQualityGate").addEdge("responseQualityGate","director").addEdge("director","groupGuard").addEdge("groupGuard","npc").addEdge("npc","persistTurn").addEdge("persistTurn","judge").addEdge("judge",END).compile({name:"Ge8AssessmentGraph"});
-    await callContext.run({sessionId:id,runId:lock},()=>graph.invoke({step:0}));
+    await callContext.run({sessionId:id,runId:lock,assessmentVersion:d.assessment_version},()=>graph.invoke({step:0}));
     return {finished:finish,reply,round:state.round,phase:state.phase,report,blackboard:publicState(state),agent_trace:traces};
   } finally {
     await prisma.assessmentSession.updateMany({where:{id,turnLockId:lock,status:"running"},data:{turnLockId:null,turnLockedAt:null}});
@@ -126,5 +126,5 @@ export async function retryScoring(id:string) {
   const changed=await prisma.assessmentSession.updateMany({where:{id,status:s.status,scoringRunId:s.scoringRunId,scoringAttempts:s.scoringAttempts},data:{status:"scoring",scoringRunId:run,scoringAttempts:{increment:1}}});
   if(!changed.count)throw new Error("评分任务已被占用");
   const snapshot=readSnapshot(s.assessmentSnapshotJson);const state=JSON.parse(s.blackboardState) as Ge8State;state.phase="finished";
-  const report=await callContext.run({sessionId:id,runId:run},()=>judge(snapshot,state,s.messages));await saveReport(id,run,report,state);return report;
+  const report=await callContext.run({sessionId:id,runId:run,assessmentVersion:snapshot.definition.assessment_version},()=>judge(snapshot,state,s.messages));await saveReport(id,run,report,state);return report;
 }
