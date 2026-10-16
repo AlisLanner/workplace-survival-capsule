@@ -63,5 +63,5 @@ export function agentView(kind:string,d:Definition,state:Ge8State,probe:Probe,me
   const released=[...d.public_facts,...Object.values(d.role_facts).flat(),...d.events.flatMap(e=>e.facts)].filter(f=>state.released_facts[f.id]);
   if(kind==="npc")return {scenario_id:d.scenario_id,role_profile:d.roles[probe.agent],user_role:d.user_role,known_facts:[...released,...d.role_facts[probe.agent]],probe:{questions:probe.questions,facts:probe.facts},messages};
   if(kind==="guard")return {scenario_id:d.scenario_id,roles:d.roles,released_facts:released,probe,messages};
-  return {scenario_id:d.scenario_id,round:state.round,min_round:state.min_round,max_round:state.max_round,roles:d.roles,released_facts:released,slots:d.slots.map(({observation,priority,...s})=>s),coverage:state.slots,next_probe:probe,messages};
+  return {scenario_id:d.scenario_id,round:state.round,min_round:state.min_round,max_round:state.max_round,roles:d.roles,released_facts:released,slots:d.slots.map(({priority,...s})=>s),coverage:state.slots,next_probe:probe,messages};
 }

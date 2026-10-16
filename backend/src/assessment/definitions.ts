@@ -2,11 +2,13 @@ import { createHash } from "node:crypto";
 import observations from "./observations.json";
 import v2 from "./versions/ge8-20261016.2.json";
 import v3 from "./versions/ge8-20261016.3.json";
+import v4 from "./versions/ge8-20261016.4.json";
+import v5 from "./versions/ge8-20261016.5.json";
 import { calibration } from "./calibration";
 import type { AgentName } from "../types/agent";
 import type { Definition, DimensionId, Fact } from "./types";
 
-export const VERSION = "ge8-20261016.4";
+export const VERSION = "ge8-20261016.6";
 export const SCHEMA = "ge8/1";
 export const BUNDLE = `${VERSION}/r01`;
 export const PROMPT_NAMES = ["director", "leader", "coworker", "client", "group-discussion", "judge", "behavior-detector", "stage-director"] as const;
@@ -87,7 +89,7 @@ export const definitions: Definition[] = scenarios.map(s => {
 
 export function hash(value: unknown): string { return createHash("sha256").update(typeof value === "string" ? value : JSON.stringify(value)).digest("hex"); }
 export function getDefinition(id: string, version=VERSION): Definition {
-  const d=[...definitions,...v2 as Definition[],...v3 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
+  const d=[...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
   if(!d) throw new Error(`未安装或不支持的测量定义：${id}/${version}`);
   return structuredClone(d);
 }
@@ -103,4 +105,4 @@ export function validateDefinitions(list=definitions) {
     }
   }
 }
-validateDefinitions([...definitions,...v2 as Definition[],...v3 as Definition[]]);
+validateDefinitions([...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[]]);

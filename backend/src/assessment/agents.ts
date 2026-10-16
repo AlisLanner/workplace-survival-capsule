@@ -8,7 +8,8 @@ import type { Evidence, Ge8State, Probe, Snapshot, TranscriptMessage } from "./t
 async function jsonCall(s:Snapshot,key:string,kind:"director"|"npc"|"guard",input:unknown,check:(x:any)=>unknown):Promise<any> {
   const p=s.model[kind];let failure:unknown;
   for(let attempt=1;attempt<=s.model.max_attempts;attempt++) {
-    try {const raw=await auditedCall(key,{systemPrompt:s.prompts[key].content,userPrompt:JSON.stringify(input),model:s.model.fast_model,temperature:p.temperature,maxTokens:p.max_tokens,thinking:p.thinking,timeoutMs:p.timeout_ms,baseUrl:s.model.base_url,maxAttempts:1,allowMockFallback:false});return check(strictJson(raw));}
+    const request=attempt===1?input:{...(input as Record<string,unknown>),repair:{validation_error:failure instanceof Error?failure.message.slice(0,400):"输出契约失败",instruction:"在相同事实和契约下重新输出完整合法JSON。不得补写候选人原话或行为；没有证据保留缺失。"}};
+    try {return await auditedCall(key,{systemPrompt:s.prompts[key].content,userPrompt:JSON.stringify(request),model:s.model.fast_model,temperature:p.temperature,maxTokens:p.max_tokens,thinking:p.thinking,timeoutMs:p.timeout_ms,baseUrl:s.model.base_url,maxAttempts:1,allowMockFallback:false},raw=>check(strictJson(raw)));}
     catch(e){failure=e;}
   }
   throw failure;
@@ -29,7 +30,11 @@ export async function director(s:Snapshot,state:Ge8State,probe:Probe,messages:Tr
   return jsonCall(s,"director","director",agentView("director",s.definition,state,probe,messages),x=>{
     if(!Array.isArray(x?.slot_evidence) || typeof x.should_finish!=="boolean")throw new Error("导演契约无效");
     if(x.next_probe && (!["leader","coworker","client"].includes(x.next_probe.agent) || !Array.isArray(x.next_probe.slot_ids) || x.next_probe.slot_ids.some((id:string)=>!s.definition.slots.some(slot=>slot.slot_id===id && slot.target_agent===x.next_probe.agent))))throw new Error("导演调度了未知槽位或错误角色");
-    const evidence=x.slot_evidence.map((e:Evidence)=>locateEvidence(e,s.definition,state,messages));
+    const evidence=x.slot_evidence.filter((e:Evidence)=>{
+      if(!e || !s.definition.slots.some(slot=>slot.slot_id===e.slot_id))throw new Error("未知证据槽位");
+      // An explicit absence is not evidence and never satisfies coverage or becomes a zero score.
+      return e.sufficiency!=="none";
+    }).map((e:Evidence)=>locateEvidence(e,s.definition,state,messages));
     return {slot_evidence:evidence,should_finish:x.should_finish,next_probe:x.next_probe};
   });
 }

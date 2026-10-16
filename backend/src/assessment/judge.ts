@@ -86,13 +86,14 @@ export function mockSample(snapshot:Snapshot,state:Ge8State):JudgeSample {
 export async function judge(snapshot:Snapshot,state:Ge8State,messages:TranscriptMessage[],progress?:(count:number)=>void):Promise<Ge8Report> {
   const attempts:Attempt[]=[];let count=0;
   const results=await Promise.all(Array.from({length:5},async(_,sample)=>{
+    let validationError:string|undefined;
     for(let attempt=1;attempt<=snapshot.model.max_attempts;attempt++) {
       const started=Date.now();
       try {
         const params=snapshot.model.judge;
-        const raw=snapshot.model.mock?JSON.stringify(mockSample(snapshot,state)):await auditedCall(`judge/${sample}/${attempt}`,{systemPrompt:snapshot.prompts.judge.content,userPrompt:JSON.stringify({definition:snapshot.definition,opportunities:state.slots,released_facts:state.released_facts,messages}),model:snapshot.model.judge_model,temperature:params.temperature,maxTokens:params.max_tokens,thinking:params.thinking,timeoutMs:params.timeout_ms,baseUrl:snapshot.model.base_url,maxAttempts:1,allowMockFallback:false});
-        const result=validateSample(strictJson(raw),snapshot.definition,state,messages);attempts.push({sample,attempt,ok:true,elapsed_ms:Date.now()-started});progress?.(++count);return result;
-      }catch(error){attempts.push({sample,attempt,ok:false,error:error instanceof Error?error.message:String(error),elapsed_ms:Date.now()-started});}
+        const result=snapshot.model.mock?validateSample(mockSample(snapshot,state),snapshot.definition,state,messages):await auditedCall(`judge/${sample}/${attempt}`,{systemPrompt:snapshot.prompts.judge.content,userPrompt:JSON.stringify({definition:snapshot.definition,opportunities:state.slots,released_facts:state.released_facts,messages,...(validationError?{repair:{validation_error:validationError,instruction:"按原契约重新输出完整合法JSON。不得编造原话，无法判断的维度保留null。"}}:{})}),model:snapshot.model.judge_model,temperature:params.temperature,maxTokens:params.max_tokens,thinking:params.thinking,timeoutMs:params.timeout_ms,baseUrl:snapshot.model.base_url,maxAttempts:1,allowMockFallback:false},raw=>validateSample(strictJson(raw),snapshot.definition,state,messages));
+        attempts.push({sample,attempt,ok:true,elapsed_ms:Date.now()-started});progress?.(++count);return result;
+      }catch(error){validationError=(error instanceof Error?error.message:String(error)).slice(0,400);attempts.push({sample,attempt,ok:false,error:validationError,elapsed_ms:Date.now()-started});}
     }
     progress?.(++count);return null;
   }));

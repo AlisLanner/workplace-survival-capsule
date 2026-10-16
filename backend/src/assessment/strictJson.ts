@@ -19,5 +19,5 @@ export function strictJson(raw: string): unknown {
     else {const m=text.slice(i).match(/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/);if(!m)throw new Error("Invalid JSON value");i+=m[0].length;return;}
     throw new Error("Incomplete JSON");
   }
-  value();ws();if(i!==text.length)throw new Error("Trailing JSON content");return JSON.parse(text);
+  value();ws();if(i!==text.length)throw new Error(`Trailing JSON content at position ${i}: 顶层对象已提前结束，后面仍有字段或文本；所有字段必须放在同一个顶层对象内`);return JSON.parse(text);
 }
