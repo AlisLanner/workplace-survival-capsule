@@ -12,6 +12,7 @@ import { runAssessmentTurn, runAssessmentTurnStreaming, type StreamingTurnEvents
 import type { VisibleReply } from "../types/agent";
 import { startGe8, runGe8 } from "../assessment/session";
 import { legacyScenario } from "../assessment/legacy";
+import { frozenScenario } from "../assessment/runtime";
 
 export interface StartAssessmentInput {
   user_id?: string;
@@ -175,13 +176,13 @@ export async function getAssessmentSession(sessionId: string) {
 
   const normalizedSession = normalizeSession(session);
 
-  if(!session.assessmentVersion)session.scenario=await legacyScenario(session.scenario);
+  session.scenario=session.assessmentVersion?frozenScenario(session.scenario,session.assessmentSnapshotJson):await legacyScenario(session.scenario);
 
   return {
     session: normalizedSession,
     scenario: normalizeScenario(session.scenario),
     messages: session.messages,
-    group_discussions: session.groupDiscussions.map(normalizeDiscussion),
+    group_discussions: session.assessmentVersion?[]:session.groupDiscussions.map(normalizeDiscussion),
     agent_trace: session.agentTraceEvents.map(normalizeTraceEvent),
     report: normalizedSession.reportJson
   };

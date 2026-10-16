@@ -87,4 +87,8 @@ describe("strict scoring and missing semantics",()=>{
     const r=aggregateSamples(samples,f.snapshot,f.state);expect(r.sampling_stats.variance).toBe(0);expect(r.report_status).toBe("provisional");expect(r.review_reasons).toContain("dimension_disagreement:GE01");
   });
   it("mock reports never expose a formal total",()=>{const f=fixture();f.snapshot.model.mock=true;const r=aggregateSamples(Array(5).fill(f.sample),f.snapshot,f.state);expect(r.report_status).toBe("debug");expect(r.total_score).toBeNull();});
+  it("does not attach high-band praise to an aggregate in an unrepresented lower band",()=>{
+    const f=fixture();const samples=[2,2,18,18,18].map(score=>{const s=structuredClone(f.sample);s.dimension_results[0].score=score;s.dimension_results[0].analysis=score>15?"高档样本表扬":"低档样本批评";return s;});
+    const r=aggregateSamples(samples,f.snapshot,f.state);expect(r.dimension_results[0].score).toBe(13);expect(r.dimension_results[0].analysis).not.toContain("样本表");expect(r.dimension_results[0].analysis).toContain("人工复核");expect(r.review_reasons).toContain("aggregate_explanation_crosses_band:GE01");
+  });
 });

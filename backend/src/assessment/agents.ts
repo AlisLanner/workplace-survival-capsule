@@ -33,10 +33,10 @@ export async function director(s:Snapshot,state:Ge8State,probe:Probe,messages:Tr
     return {slot_evidence:evidence,should_finish:x.should_finish,next_probe:x.next_probe};
   });
 }
-export async function guard(s:Snapshot,state:Ge8State,probe:Probe,messages:TranscriptMessage[]) {
+export async function guard(s:Snapshot,state:Ge8State,probe:Probe,messages:TranscriptMessage[],draft?:unknown) {
   if(s.model.mock)return {no_change:true,issues:[]};
-  return jsonCall(s,"group-discussion","guard",agentView("guard",s.definition,state,probe,messages),x=>{
-    if(typeof x?.no_change!=="boolean" || !Array.isArray(x.issues) || x.issues.some((v:unknown)=>typeof v!=="string"))throw new Error("守护契约无效");
+  return jsonCall(s,"group-discussion","guard",{...agentView("guard",s.definition,state,probe,messages),draft},x=>{
+    if(typeof x?.no_change!=="boolean" || !Array.isArray(x.issues) || x.issues.some((v:unknown)=>typeof v!=="string" || !v.trim()) || x.no_change!==!x.issues.length)throw new Error("守护契约无效");
     return {no_change:x.no_change,issues:x.issues};
   });
 }
@@ -52,7 +52,6 @@ export async function npc(s:Snapshot,state:Ge8State,probe:Probe,messages:Transcr
     if(r?.speaker!==canonical.speaker || r?.role!==canonical.role || typeof r.content!=="string" || !r.content.trim())throw new Error("角色身份或输出无效");
     if(/GE0[1-8]|评分|高分|低分|维度|满分|正确答案|过关|你应该|建议你/.test(r.content))throw new Error("角色回复泄露评分或替候选人作答");
     if(findNpcBoundaryViolation(probe.agent,r.content))throw new Error("角色回复超出中性探测边界");
-    const otherNames=Object.entries(s.definition.roles).filter(([a])=>a!==probe.agent).map(([,r])=>r.name);
     const allowedFacts=[...s.definition.public_facts,...Object.values(s.definition.role_facts).flat().filter(f=>state.released_facts[f.id]),...s.definition.role_facts[probe.agent],...probe.facts].map(f=>f.text).join(" ");
     const numbers=r.content.match(/\d+(?:\.\d+)?/g)??[];
     if(numbers.some((n:string)=>!allowedFacts.includes(n)))throw new Error("角色编造了未获准的数值");

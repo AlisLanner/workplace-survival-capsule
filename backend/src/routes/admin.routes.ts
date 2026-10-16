@@ -9,7 +9,7 @@ import {
   updateScenarioController
 } from "../controllers/admin.controller";
 import { asyncHandler } from "../utils/asyncHandler";
-import { retryScoring } from "../assessment/session";
+import { recoverInterruptedTurn, retryScoring } from "../assessment/session";
 
 function adminAuth(req: Request, res: Response, next: NextFunction) {
   const secret = process.env.ADMIN_SECRET;
@@ -37,4 +37,5 @@ adminRouter.put("/prompts/:key", asyncHandler(updatePromptController));
 adminRouter.get("/sessions", asyncHandler(listSessionsController));
 adminRouter.get("/sessions/:id", asyncHandler(getSessionDetailController));
 adminRouter.post("/sessions/:id/retry-scoring", asyncHandler(async(req,res)=>{res.json(await retryScoring(req.params.id));}));
+adminRouter.post("/sessions/:id/recover-turn", asyncHandler(async(req,res)=>{res.json(await recoverInterruptedTurn(req.params.id));}));
 

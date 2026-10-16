@@ -24,7 +24,10 @@ async function createCheckpoint({repo,database,storage,id}) {
   snap.close();db.close();
   const config=path.join(repo,'backend/.env');if(fs.existsSync(config))fs.copyFileSync(config,path.join(destination,'backend.env'));
   for(const rel of ['backend/dist','frontend/dist'])if(fs.existsSync(path.join(repo,rel)))fs.cpSync(path.join(repo,rel),path.join(destination,rel),{recursive:true});
-  fs.mkdirSync(path.join(destination,'tools'));for(const name of ['checkpoint.cjs','verify-checkpoint.cjs','restore-local.cjs','probe-restored.cjs'])fs.copyFileSync(path.join(__dirname,name),path.join(destination,'tools',name));
+  fs.mkdirSync(path.join(destination,'tools'));for(const name of ['checkpoint.cjs','verify-checkpoint.cjs','restore-local.cjs','probe-restored.cjs','start-pointer.cjs','local-server.cjs'])fs.copyFileSync(path.join(__dirname,name),path.join(destination,'tools',name));
+  // Preserve local entry points as well as their exact launcher implementation; they stay private.
+  const project=path.dirname(repo);const entries=['启动当前稳定版.cmd','恢复到修改前.cmd','启动八维阶段版.cmd','stable-launch.json','开发工具/启动当前稳定版.cjs'];
+  for(const rel of entries){const source=path.join(project,rel);if(fs.existsSync(source)){const target=inside(destination,path.join(destination,'local-entries',rel));fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(source,target);}}
   const manifest={format:'maat-checkpoint/1',checkpoint_id:path.basename(destination),created_at:new Date().toISOString(),code_sha:code,source_repo:repo,source_database:database,table_counts:counts,status:git(repo,['status','--porcelain']),untracked,files:Object.fromEntries(files(destination).map(rel=>[rel,sha(path.join(destination,rel))])),user_accepted:false};
   fs.writeFileSync(path.join(destination,'manifest.json'),JSON.stringify(manifest,null,2));return {directory:destination,manifest};
 }

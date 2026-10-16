@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
 import observations from "./observations.json";
+import v2 from "./versions/ge8-20261016.2.json";
+import { calibration } from "./calibration";
 import type { AgentName } from "../types/agent";
 import type { Definition, DimensionId, Fact } from "./types";
 
-export const VERSION = "ge8-20261016.2";
+export const VERSION = "ge8-20261016.3";
 export const SCHEMA = "ge8/1";
 export const BUNDLE = `${VERSION}/r01`;
 export const PROMPT_NAMES = ["director", "leader", "coworker", "client", "group-discussion", "judge", "behavior-detector", "stage-director"] as const;
@@ -53,7 +55,7 @@ export const definitions: Definition[] = scenarios.map(s => {
     {id:`${s.code}:change`,round:5,agent:s.changeAgent,facts:[{id:`${s.code}:X1`,text:s.change}]}
   ];
   const slots = observations.filter(o=>o.scenario_code===s.code).map((o,i)=>({
-    slot_id:o.slot_id, display_code:o.display_code, dimension_id:o.dimension_id as DimensionId,
+    slot_id:`${VERSION}:${o.slot_id.split(":").at(-1)}`, display_code:o.display_code, dimension_id:o.dimension_id as DimensionId,
     observation:o.observation,target_agent:o.target_agent as AgentName,probe_intent:o.neutral_probe,
     required_fact_ids:[...facts.map(f=>f.id), ...(i===9?[`${s.code}:L1`]:[]), ...(i===12?[`${s.code}:X1`]:[]), ...(i===13?[`${s.code}:R1`]:[])],
     trigger_event_ids:i===9?[`${s.code}:limit`]:i===12?[`${s.code}:change`]:[],
@@ -62,20 +64,29 @@ export const definitions: Definition[] = scenarios.map(s => {
   return {
     assessment_version:VERSION,schema_version:SCHEMA,scenario_id:s.id,scenario_code:s.code,title:s.title,user_role:s.user,
     dimensions,roles:Object.fromEntries((["leader","coworker","client"] as AgentName[]).map((a,i)=>[a,{name:s.names[i],role:s.roles[i]}])) as Definition["roles"],
-    slots,public_facts:facts,role_facts:roleFacts,events,round_policy:{min:8,max:15},prompt_bundle_version:BUNDLE,
+    slots,public_facts:facts,role_facts:roleFacts,events,round_policy:{min:8,max:15,max_consecutive_agent_rounds:2},prompt_bundle_version:BUNDLE,
     scoring_policy:{samples:5,total_variance_limit:80,dimension_range_limit:8,bands:[
       "0—5：必要信息和机会充分，仍明确回避行动或有直接不当行为；引用原话。",
       "6—10：有相关态度或零散动作，但关键依据、责任、条件或执行细节不足。",
       "11—15：主要判断动作基本适用，能说明依据与安排，但观察到重要缺口或衔接不足。",
       "16—20：两个点均有充分证据，判断、行动与边界一致，符合本岗位权限与条件。"
     ],boundaries:["合作看尊重、支持和共同承担；沟通看信息组织与协商。","比较已知方案归分析；新的适用思路和吸收信息后的改进归创造。","决策看选择和担责；执行看安排和跟踪。新人不评管理授权。","既定交付归执行；额外目标的价值与投入判断归进取。","稳定条件计划归执行；实际变化后的调整和质疑回应归适应。","诚信主要归合作，权限程序主要归执行；同一风险不全维重复扣分。"]},
-    anchors:dimensions.map(d=>{const points=slots.filter(x=>x.dimension_id===d.id).map(x=>x.observation).join("；");return {dimension_id:d.id,low:`有机会后明确采取与以下要求相反的行为：${points}。须有反证原话。`,middle:`${s.user}对以下要求给出适用动作，但观察到依据或衔接不足：${points}`,high:`${s.user}在本岗位权限内就以下两点分别给出具体、可衔接的依据：${points}`,missing:"没有必要机会或不能定位可判断原话时保留null，不依据空白打低分。"};})
+    anchors:dimensions.map((d,i)=>{
+      const example=calibration[s.code][i];
+      const codes=slots.filter(x=>x.dimension_id===d.id).map(x=>x.display_code);
+      const render=(quotes:string[])=>quotes.map((q,j)=>`${codes[j]}示例原话：“${q}”`).join("\n");
+      return {dimension_id:d.id,
+        low:`0—5的明确反向表现样例（必要信息和机会已提供）：\n${render(example.low)}\n${example.distinction}`,
+        middle:`中间分档样例：\n${render(example.middle)}\n有相关动作但关键条件、责任或细节显著不足时为6—10；主要动作基本适用且有关键依据，但观察到衔接缺口时为11—15。须依据实际原话选择，不给样例固定分。`,
+        high:`16—20的充分表现样例（不是唯一正确答案）：\n${render(example.high)}\n${example.distinction}`,
+        missing:"必要事实未送达、没有机会，或回答仍无法判断两个点时保留null。单纯未提及、冗长空话和技术失败不能转换为0—5；先补中性追问，仍不足则复核。"};
+    })
   };
 });
 
 export function hash(value: unknown): string { return createHash("sha256").update(typeof value === "string" ? value : JSON.stringify(value)).digest("hex"); }
 export function getDefinition(id: string, version=VERSION): Definition {
-  const d=definitions.find(x=>x.scenario_id===id && x.assessment_version===version);
+  const d=[...definitions,...v2 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
   if(!d) throw new Error(`未安装或不支持的测量定义：${id}/${version}`);
   return structuredClone(d);
 }
@@ -91,4 +102,4 @@ export function validateDefinitions(list=definitions) {
     }
   }
 }
-validateDefinitions();
+validateDefinitions([...definitions,...v2 as Definition[]]);

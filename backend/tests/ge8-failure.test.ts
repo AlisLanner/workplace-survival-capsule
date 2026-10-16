@@ -4,10 +4,10 @@ import {callDeepSeek} from "../src/services/llm.service";
 import {judge,mockSample} from "../src/assessment/judge";
 import {initialState} from "../src/assessment/coverage";
 import {definitions,hash} from "../src/assessment/definitions";
-import {modelConfig,readSnapshot} from "../src/assessment/runtime";
+import {modelConfig,readSnapshot,sealSnapshot} from "../src/assessment/runtime";
 import type {Snapshot} from "../src/assessment/types";
 const call=vi.mocked(callDeepSeek);
-function fixture(){const d=definitions[0];const state=initialState(d);const prompts={judge:{key:"test/judge",content:"frozen",hash:hash("frozen")}};const snapshot:Snapshot={schema_version:d.schema_version,definition:d,definition_hash:hash(d),code_sha:"test",prompts,prompt_bundle_hash:hash(prompts),model:{...modelConfig(),mock:false}};return {snapshot,state,raw:JSON.stringify(mockSample(snapshot,state))};}
+function fixture(){const d=definitions[0];const state=initialState(d);const prompts={judge:{key:"test/judge",content:"frozen",hash:hash("frozen")}};const snapshot:Snapshot=sealSnapshot({schema_version:d.schema_version,definition:d,definition_hash:hash(d),code_sha:"test",prompts,prompt_bundle_hash:hash(prompts),model:{...modelConfig(),mock:false},runtime:{group_chat_enabled:true,group_chat_rounds:[3,6]}});return {snapshot,state,raw:JSON.stringify(mockSample(snapshot,state))};}
 describe("bounded GE8 failures",()=>{
   beforeEach(()=>call.mockReset());afterEach(()=>vi.unstubAllEnvs());
   it("caps five broken lanes at ten total requests, never scoring four samples",async()=>{const f=fixture();call.mockResolvedValue('{"dimension_results":[]}');const r=await judge(f.snapshot,f.state,[]);expect(call).toHaveBeenCalledTimes(10);expect(r.report_status).toBe("scoring_failed");expect(r.total_score).toBeNull();expect(r.sampling_stats.valid_sample_count).toBe(0);});

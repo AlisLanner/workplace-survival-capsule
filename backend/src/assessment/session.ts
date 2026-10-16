@@ -11,6 +11,7 @@ import { createSnapshot, readSnapshot } from "./runtime";
 import type { Definition, Ge8Report, Ge8State, Snapshot, TranscriptMessage } from "./types";
 import { normalizeScenario, normalizeTraceEvent } from "../utils/jsonField";
 import { callContext } from "./audit";
+import { legacyScenario } from "./legacy";
 
 export async function startGe8(scenarioId:string,input:{user_id?:string;nickname?:string}) {
   return prisma.$transaction(async tx=>{
@@ -19,7 +20,9 @@ export async function startGe8(scenarioId:string,input:{user_id?:string;nickname
     getDefinition(scenario.id,scenario.assessmentVersion); // Reject unknown versions; never infer A.
     const d=JSON.parse(scenario.assessmentDefinitionJson??"null") as Definition;
     if(!d || d.scenario_id!==scenario.id || d.assessment_version!==scenario.assessmentVersion || hash(d)!==hash(getDefinition(scenario.id,scenario.assessmentVersion)))throw new Error("已安装定义与版本不匹配，请核对安装记录");
-    const snapshot=await createSnapshot(tx,d);const state=initialState(snapshot.definition);
+    const rounds=JSON.parse(scenario.groupChatRounds);
+    if(!Array.isArray(rounds) || rounds.some(x=>!Number.isInteger(x) || x<1))throw new Error("守护轮次配置无效");
+    const snapshot=await createSnapshot(tx,d,{group_chat_enabled:scenario.groupChatEnabled,group_chat_rounds:rounds});const state=initialState(snapshot.definition);
     let userId=input.user_id;
     if(userId)await tx.user.upsert({where:{id:userId},create:{id:userId,nickname:input.nickname},update:input.nickname?{nickname:input.nickname}:{}});
     else if(input.nickname)userId=(await tx.user.create({data:{nickname:input.nickname}})).id;
@@ -50,7 +53,9 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
   let state=JSON.parse(session.blackboardState) as Ge8State;
   if(state.schema_version!==SCHEMA || state.scenario_id!==d.scenario_id || state.assessment_version!==d.assessment_version)throw new Error("会话状态与冻结定义不一致");
   if(session.status!=="running")return {finished:session.status==="finished",reply:{speaker:"测评系统",role:"系统",content:session.status==="finished"?"本次测评已结束。":"评分任务进行中或已中断，请在后台查看状态。"},round:session.round,phase:session.status,report:session.reportJson?JSON.parse(session.reportJson):undefined,blackboard:publicState(state)};
-  const lock=randomUUID();const claimed=await prisma.assessmentSession.updateMany({where:{id,status:"running",turnLockId:null},data:{turnLockId:lock,turnLockedAt:new Date()}});
+  const legacy=snapshot.runtime?null:await legacyScenario(session.scenario);
+  const runtime=snapshot.runtime??{group_chat_enabled:legacy!.groupChatEnabled,group_chat_rounds:JSON.parse(legacy!.groupChatRounds)};
+  const lock=`${process.pid}:${randomUUID()}`;const claimed=await prisma.assessmentSession.updateMany({where:{id,status:"running",turnLockId:null,round:session.round,blackboardState:session.blackboardState},data:{turnLockId:lock,turnLockedAt:new Date()}});
   if(!claimed.count)throw new Error("本轮正在处理，重复请求未执行");
   const messages:TranscriptMessage[]=[...session.messages];let report:Ge8Report|undefined;
   let reply={speaker:"测评系统",role:"系统",content:"本次情境取证结束。"};
@@ -82,17 +87,22 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
       }))
       .addNode("groupGuard",node("groupGuard",async()=>{
         if(finish)return;const probe=nextProbe(d,state,suggestion);state.pending_probe=probe;
-        if(session.scenario.groupChatEnabled && (probe.event_ids.length || JSON.parse(session.scenario.groupChatRounds).includes(state.round))) {
-          const result=await guard(snapshot,state,probe,messages);
-          await prisma.agentGroupDiscussion.create({data:{sessionId:id,roundIndex:state.round,phase:state.phase,inputJson:JSON.stringify({probe,assessment_version:d.assessment_version}),outputJson:JSON.stringify(result)}});
-          // Guard has no write access to facts, definition, evidence, or score. Canonical probe is retained.
-        }
       }))
       .addNode("npc",node("npc",async()=>{
         if(finish)return;const probe=state.pending_probe!;
         try{reply=await npc(snapshot,state,probe,messages);}catch{await trace("npcSafeProbe","completed","角色技术失败，使用冻结中性问题；未降级为模拟评分");reply=canonicalReply(snapshot,probe);}
-        const m=await prisma.message.create({data:{sessionId:id,senderType:"agent",senderName:reply.speaker,senderRole:reply.role,content:reply.content,roundIndex:state.round}});messages.push(m);
-        delivered(probe,m.id,state.round,state,d);
+        if(runtime.group_chat_enabled && (probe.event_ids.length || runtime.group_chat_rounds.includes(state.round))) {
+          const draft=reply;
+          let result:{no_change:boolean;issues:string[]};
+          try{result=await guard(snapshot,state,probe,messages,reply);}catch{result={no_change:false,issues:["守护技术失败，采用冻结中性问题"]};}
+          if(!result.no_change)reply=canonicalReply(snapshot,probe);
+          await prisma.agentGroupDiscussion.create({data:{sessionId:id,roundIndex:state.round,phase:state.phase,inputJson:JSON.stringify({probe,draft,assessment_version:d.assessment_version}),outputJson:JSON.stringify({...result,correction_applied:!result.no_change})}});
+        }
+        const m=await prisma.$transaction(async tx=>{
+          const m=await tx.message.create({data:{sessionId:id,senderType:"agent",senderName:reply.speaker,senderRole:reply.role,content:reply.content,roundIndex:state.round}});
+          delivered(probe,m.id,state.round,state,d);
+          await tx.assessmentSession.update({where:{id},data:{blackboardState:JSON.stringify(state)}});return m;
+        });messages.push(m);
         events?.onSpeaker(reply.speaker,reply.role);for(let i=0;i<reply.content.length;i+=12)events?.onToken(reply.content.slice(i,i+12));
       }))
       .addNode("persistTurn",node("persistTurn",async()=>{
@@ -122,9 +132,25 @@ export async function retryScoring(id:string) {
     let alive=true;try{process.kill(owner,0);}catch(e){if((e as NodeJS.ErrnoException).code==="ESRCH")alive=false;}
     if(alive)throw new Error("原评分进程仍存在，不会重复调用");
   } else if(s.status!=="scoring_interrupted" && oldReport?.report_status!=="scoring_failed")throw new Error("此会话不允许重试评分");
+  const snapshot=readSnapshot(s.assessmentSnapshotJson);const state=JSON.parse(s.blackboardState) as Ge8State;state.phase="finished";
   const run=`${process.pid}:${randomUUID()}`;
   const changed=await prisma.assessmentSession.updateMany({where:{id,status:s.status,scoringRunId:s.scoringRunId,scoringAttempts:s.scoringAttempts},data:{status:"scoring",scoringRunId:run,scoringAttempts:{increment:1}}});
   if(!changed.count)throw new Error("评分任务已被占用");
-  const snapshot=readSnapshot(s.assessmentSnapshotJson);const state=JSON.parse(s.blackboardState) as Ge8State;state.phase="finished";
   const report=await callContext.run({sessionId:id,runId:run,assessmentVersion:snapshot.definition.assessment_version},()=>judge(snapshot,state,s.messages));await saveReport(id,run,report,state);return report;
+}
+
+/** Explicit admin recovery only; a GET never starts paid work. Historical messages remain available. */
+export async function recoverInterruptedTurn(id:string) {
+  const s=await prisma.assessmentSession.findUniqueOrThrow({where:{id}});
+  if(!s.assessmentVersion || s.status!=="running" || !s.turnLockId)throw new Error("没有可恢复的新版轮次");
+  readSnapshot(s.assessmentSnapshotJson);
+  const owner=Number(s.turnLockId.split(":")[0]);if(!owner)throw new Error("无法确认旧锁进程，需人工检查");
+  let dead=false;try{process.kill(owner,0);}catch(e){dead=(e as NodeJS.ErrnoException).code==="ESRCH";}
+  if(!dead)throw new Error("原轮次进程仍存在或状态未知，不能解锁");
+  return prisma.$transaction(async tx=>{
+    const changed=await tx.assessmentSession.updateMany({where:{id,status:"running",turnLockId:s.turnLockId,round:s.round,blackboardState:s.blackboardState},data:{turnLockId:null,turnLockedAt:null}});
+    if(!changed.count)throw new Error("会话已变化，未解锁");
+    await tx.agentTraceEvent.create({data:{sessionId:id,runId:s.turnLockId!,nodeId:"adminRecovery",agentName:"测评系统",eventType:"recovery",status:"completed",summary:"管理员确认原进程退出后恢复；已保存消息保留，下一轮继续取证，未自动调用模型。",sequence:0}});
+    return {recovered:true,round:s.round,model_calls:0};
+  });
 }

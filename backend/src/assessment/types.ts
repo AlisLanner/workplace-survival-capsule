@@ -16,7 +16,7 @@ export interface Definition {
   roles: Record<AgentName, { name: string; role: string }>;
   slots: Slot[]; public_facts: Fact[]; role_facts: Record<AgentName, Fact[]>;
   events: Array<{ id: string; round: number; agent: AgentName; facts: Fact[] }>;
-  round_policy: { min: number; max: number };
+  round_policy: { min: number; max: number; max_consecutive_agent_rounds?:number };
   scoring_policy: { samples: number; total_variance_limit: number; dimension_range_limit: number; bands: string[]; boundaries: string[] };
   anchors: Array<{ dimension_id: DimensionId; low: string; middle: string; high: string; missing: string }>;
   prompt_bundle_version: string;
@@ -46,10 +46,13 @@ export interface ModelConfig {
   max_attempts: number;
 }
 export interface Snapshot {
+  snapshot_format?:"ge8-snapshot/2";
+  snapshot_hash?:string;
   schema_version: string; definition: Definition; definition_hash: string; code_sha: string;
   code_dirty?:boolean;
   prompts: Record<string, { key: string; content: string; hash: string }>;
   prompt_bundle_hash: string; model: ModelConfig;
+  runtime?:{group_chat_enabled:boolean;group_chat_rounds:number[]};
 }
 export type DimensionStatus = "rated" | "not_observed" | "insufficient" | "scoring_failed";
 export interface SlotResult {

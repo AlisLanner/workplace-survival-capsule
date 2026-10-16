@@ -24,6 +24,8 @@ export function validateSample(input:unknown,d:Definition,state:Ge8State,message
       if(slot.sufficiency==="sufficient" && !evidence.some(e=>e.sufficiency==="sufficient"))throw new Error("充分观察点必须有可判断原话");
       if(slot.sufficiency==="none" && evidence.length)throw new Error("未观察点不能携带证据");
       if(evidence.length && slot.valence===null)throw new Error("证据缺少正负方向");
+      if(evidence.some(e=>e.sufficiency==="none"))throw new Error("不可判断片段不应作为评分证据");
+      if(evidence.length && ((slot.valence==="support" && evidence.every(e=>e.valence==="counter")) || (slot.valence==="counter" && evidence.every(e=>e.valence==="support"))))throw new Error("观察点方向与引用反向矛盾");
       const opportunity=evidence.length?opportunityFor(slot.slot_id,state,d):(state.slots[slot.slot_id]?.opportunities??[]);
       if(dim.status==="rated" && (slot.sufficiency!=="sufficient" || !opportunity.length))throw new Error("缺少充分机会与两点证据不能评分");
       for(const e of evidence){const key=e.message_id+":"+e.quote;const other=usedQuotes.get(key);if(other && other!==dim.id)throw new Error("同一原话片段跨维重复取证，需指出独立行为片段");usedQuotes.set(key,dim.id);}
@@ -50,10 +52,13 @@ export function aggregateSamples(samples:JudgeSample[],snapshot:Snapshot,state:G
       return {id:def.id,name:def.name,score:null,status:technical?"scoring_failed":missing?.status??"insufficient",analysis:technical?"评分技术失败；对话和原始失败已保留，未生成分数。":missing?.analysis??"证据不足，需复核。",slot_results:missing?.slot_results??d.slots.filter(s=>s.dimension_id===def.id).map(s=>({slot_id:s.slot_id,opportunity:state.slots[s.slot_id].opportunities,sufficiency:"none",valence:null,evidence:[]}))};
     }
     const sorted=[...scores].sort((a,b)=>a-b);const score=Math.round((sorted[1]+sorted[2]+sorted[3])/3);
-    const anchor=rated.reduce((a,b)=>Math.abs(a.score!-score)<=Math.abs(b.score!-score)?a:b);
+    const band=(n:number)=>n<=5?0:n<=10?1:n<=15?2:3;
+    const sameBand=rated.filter(r=>band(r.score!)===band(score));
+    const anchor=(sameBand.length?sameBand:rated).reduce((a,b)=>Math.abs(a.score!-score)<=Math.abs(b.score!-score)?a:b);
+    if(!sameBand.length)review.push(`aggregate_explanation_crosses_band:${def.id}`);
     const spread=sorted[4]-sorted[0];
     if(spread>=d.scoring_policy.dimension_range_limit || (sorted[0]<=5 && sorted[4]>=16))review.push(`dimension_disagreement:${def.id}`);
-    return {...anchor,score,analysis:`${anchor.analysis} 聚合分数${score}/20；五次评分范围${sorted[0]}—${sorted[4]}。${spread>=d.scoring_policy.dimension_range_limit?"逐维分歧达到工程告警值，建议复核。":""}`};
+    return {...anchor,score,analysis:`${sameBand.length?anchor.analysis:"没有与聚合分档一致的样本解释，保留原话供人工复核，不沿用跨档评价。"} 聚合分数${score}/20；五次评分范围${sorted[0]}—${sorted[4]}。${spread>=d.scoring_policy.dimension_range_limit?"逐维分歧达到工程告警值，建议复核。":""}`};
   });
   const allRated=!technical && samples.every(s=>s.dimension_results.every(r=>r.status==="rated"));
   let totalVariance:number|null=null;

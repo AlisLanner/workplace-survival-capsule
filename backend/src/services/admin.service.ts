@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma";
 import { VERSION } from "../assessment/definitions";
 import { legacyScenario } from "../assessment/legacy";
+import { frozenScenario } from "../assessment/runtime";
 import {
   normalizeDiscussion,
   normalizeScenario,
@@ -128,7 +129,7 @@ export async function listSessions() {
   const abandonedIds: string[] = [];
 
   for (const session of sessions) {
-    if (session.status !== "running") continue;
+    if (session.status !== "running" || session.turnLockId) continue;
     const lastActivity =
       session.messages.length > 0
         ? new Date(session.messages[0].createdAt).getTime()
@@ -148,7 +149,7 @@ export async function listSessions() {
   return Promise.all(sessions.map(async(session) => ({
     ...normalizeSession(session),
     status: abandonedIds.includes(session.id) ? "abandoned" : session.status,
-    scenario: normalizeScenario(session.assessmentVersion?session.scenario:await legacyScenario(session.scenario))
+    scenario: normalizeScenario(session.assessmentVersion?frozenScenario(session.scenario,session.assessmentSnapshotJson):await legacyScenario(session.scenario))
   })));
 }
 
@@ -169,7 +170,7 @@ export async function getSessionDetail(sessionId: string) {
   }
 
   const normalizedSession = normalizeSession(session);
-  if(!session.assessmentVersion)session.scenario=await legacyScenario(session.scenario);
+  session.scenario=session.assessmentVersion?frozenScenario(session.scenario,session.assessmentSnapshotJson):await legacyScenario(session.scenario);
 
   return {
     session: {

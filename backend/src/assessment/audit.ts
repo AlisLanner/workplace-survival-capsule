@@ -6,7 +6,7 @@ export const callContext=new AsyncLocalStorage<{sessionId:string;runId:string;as
 export async function auditedCall(kind:string,params:Parameters<typeof callDeepSeek>[0]) {
   const context=callContext.getStore();
   // Request content contains frozen prompts and input; no credentials are passed in params.
-  const request={...params,onUsage:undefined};
+  const request={...params,mockMode:false,onUsage:undefined};
   const row=context?await prisma.assessmentCallAudit.create({data:{sessionId:context.sessionId,runId:context.runId,kind,assessmentVersion:context.assessmentVersion??VERSION,requestHash:hash(request),requestJson:JSON.stringify(request)}}):null;
   let usage:unknown=null;
   try {
