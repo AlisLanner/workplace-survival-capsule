@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { definitions, dimensions, getDefinition, hash, validateDefinitions } from "../src/assessment/definitions";
 import { agentView, coverage, delivered, initialState, locateEvidence, nextProbe, publicState, recordEvidence } from "../src/assessment/coverage";
 import { strictJson } from "../src/assessment/strictJson";
-import { aggregateSamples, mockSample, validateSample } from "../src/assessment/judge";
+import { aggregateSamples, candidateSourceFragments, JudgeValidationError, mockSample, validateSample } from "../src/assessment/judge";
 import { modelConfig } from "../src/assessment/runtime";
 import type { Evidence, Snapshot, TranscriptMessage } from "../src/assessment/types";
 
@@ -28,6 +28,24 @@ describe("GE8 measurement contract",()=>{
     f.sample.dimension_results[2].slot_results[0].sufficiency="partial";
     expect(()=>validateSample(f.sample,f.d,f.state,f.messages)).toThrow(/充分性冲突GE03/);
     expect(()=>validateSample(f.sample,f.d,f.state,f.messages)).toThrow(/跨维重复取证GE01\/GE02/);
+  });
+  it("reports a masked quote error in the same repair as repeated quotes and partial/rated conflicts",()=>{
+    const f=fixture();const first=f.sample.dimension_results[0].slot_results[0].evidence[0];
+    const other=f.sample.dimension_results[1].slot_results[0];other.evidence=[{...first,slot_id:other.slot_id}];
+    f.sample.dimension_results[2].slot_results[0].sufficiency="partial";
+    f.sample.dimension_results[7].slot_results[1].evidence[0].quote="模型改写的句子";
+    try{validateSample(f.sample,f.d,f.state,f.messages);throw Error("must reject");}catch(error){
+      expect(error).toBeInstanceOf(JudgeValidationError);const issues=(error as JudgeValidationError).issues.join("\n");
+      expect(issues).toContain("跨维重复取证GE01/GE02");expect(issues).toContain("充分性冲突GE03");expect(issues).toContain("GE08/");expect(issues).toContain("引文不存在于候选人消息");
+    }
+  });
+  it("indexes only unchanged candidate text without inventing evidence or accepting rewritten quotes",()=>{
+    const f=fixture();f.messages[1].content="我先核对事实。\n再确认职责；"+"具体行动，".repeat(100);
+    f.messages.push({id:"timer",senderType:"user",senderName:"计时",content:"__ASSESSMENT_TIME_EXPIRED__",roundIndex:17});
+    const sources=candidateSourceFragments(f.messages);expect(sources.some(s=>s.message_id==="facts"||s.message_id==="timer")).toBe(false);
+    const first=sources[0];expect(first.fragments.map(f=>f.quote).join("")).toBe(f.messages[1].content);
+    for(const source of sources)for(const fragment of source.fragments){const msg=f.messages.find(m=>m.id===source.message_id)!;expect(msg.content.slice(fragment.start,fragment.end)).toBe(fragment.quote);}
+    const before=structuredClone(f.sample);expect(()=>validateSample(f.sample,f.d,f.state,f.messages)).toThrow("引文不存在");expect(f.sample).toEqual(before);
   });
   it("registers exactly A/B/C/E with authoritative names, 64 unique points and explicit roles",()=>{
     expect(definitions.map(d=>d.scenario_code)).toEqual(["A","B","C","E"]);

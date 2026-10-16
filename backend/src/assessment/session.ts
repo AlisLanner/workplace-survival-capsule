@@ -144,8 +144,12 @@ export async function retryScoring(id:string) {
   } else if(s.status!=="scoring_interrupted" && oldReport?.report_status!=="scoring_failed")throw new Error("此会话不允许重试评分");
   const snapshot=readSnapshot(s.assessmentSnapshotJson);const state=JSON.parse(s.blackboardState) as Ge8State;state.phase="finished";
   const run=`${process.pid}:${randomUUID()}`;
-  const changed=await prisma.assessmentSession.updateMany({where:{id,status:s.status,scoringRunId:s.scoringRunId,scoringAttempts:s.scoringAttempts},data:{status:"scoring",scoringRunId:run,scoringAttempts:{increment:1}}});
-  if(!changed.count)throw new Error("评分任务已被占用");
+  await prisma.$transaction(async tx=>{
+    const changed=await tx.assessmentSession.updateMany({where:{id,status:s.status,scoringRunId:s.scoringRunId,scoringAttempts:s.scoringAttempts},data:{status:"scoring",scoringRunId:run,scoringAttempts:{increment:1}}});
+    if(!changed.count)throw new Error("评分任务已被占用");
+    // Retain the exact previous public report and its run identity before a paid retry can replace it.
+    await tx.agentTraceEvent.create({data:{sessionId:id,runId:run,nodeId:"scoringRetry",agentName:"测评系统",eventType:"recovery",status:"completed",summary:"显式重试评分：保留原报告和批次标识，继续使用原冻结定义、模板及模型，不重做作答。",payloadJson:JSON.stringify({previous_run_id:s.scoringRunId,previous_scoring_attempts:s.scoringAttempts,previous_report:oldReport}),sequence:0}});
+  });
   const report=await callContext.run({sessionId:id,runId:run,assessmentVersion:snapshot.definition.assessment_version},()=>judge(snapshot,state,s.messages));await saveReport(id,run,report,state);return report;
 }
 

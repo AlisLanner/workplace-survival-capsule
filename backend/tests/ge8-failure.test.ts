@@ -14,6 +14,16 @@ describe("bounded GE8 failures",()=>{
   beforeEach(()=>call.mockReset());afterEach(()=>vi.unstubAllEnvs());
   it("caps five broken lanes at ten total requests, never scoring four samples",async()=>{const f=fixture();call.mockResolvedValue('{"dimension_results":[]}');const r=await judge(f.snapshot,f.state,[]);expect(call).toHaveBeenCalledTimes(10);expect(r.report_status).toBe("scoring_failed");expect(r.total_score).toBeNull();expect(r.sampling_stats.valid_sample_count).toBe(0);});
   it("replaces one failed lane rather than aggregating a sixth sample",async()=>{const f=fixture();call.mockRejectedValueOnce(new Error("429 synthetic")).mockResolvedValue(f.raw);const r=await judge(f.snapshot,f.state,[]);expect(call).toHaveBeenCalledTimes(6);expect(r.sampling_stats.valid_sample_count).toBe(5);expect(r.report_status).toBe("unratable");expect((r.sampling_stats.attempts as any[]).filter(x=>!x.ok)).toHaveLength(1);});
+  it("includes the rejected draft and lossless user sources in the only repair, retaining frozen prompts",async()=>{
+    const f=fixture();const messages=[{id:"npc",senderType:"agent",senderName:"主管",content:"角色的话",roundIndex:0},{id:"user",senderType:"user",senderName:"候选人",content:"先核对条件。再确认下一步。",roundIndex:1}];
+    const duplicate='{"dimension_results":[],"dimension_results":[]}';
+    call.mockResolvedValueOnce(duplicate).mockResolvedValue(f.raw);const snapshot=JSON.stringify(f.snapshot);
+    const r=await judge(f.snapshot,f.state,messages);expect(call).toHaveBeenCalledTimes(6);expect(r.sampling_stats.valid_sample_count).toBe(5);
+    const request=call.mock.calls.map(c=>c[0]).find(p=>JSON.parse(p.userPrompt).repair)!;
+    const repair=JSON.parse(request.userPrompt).repair;expect(repair.validation_issues).toEqual(["Duplicate JSON key: dimension_results"]);expect(repair.previous_response).toBe(duplicate);
+    expect(repair.candidate_source_fragments.map((s:any)=>s.message_id)).toEqual(["user"]);expect(repair.candidate_source_fragments[0].fragments.map((s:any)=>s.quote).join("")).toBe(messages[1].content);
+    expect(request.systemPrompt).toBe(f.snapshot.prompts.judge.content);expect(JSON.stringify(f.snapshot)).toBe(snapshot);
+  });
   it("freezes real mode, model, endpoint and one network attempt for each lane",async()=>{const f=fixture();vi.stubEnv("USE_MOCK_LLM","true");call.mockResolvedValue(f.raw);await judge(f.snapshot,f.state,[]);expect(call.mock.calls[0][0]).toMatchObject({mockMode:false,model:f.snapshot.model.judge_model,baseUrl:f.snapshot.model.base_url,maxAttempts:1,allowMockFallback:false});});
   it("rejects a corrupted definition or template snapshot instead of loading latest",()=>{const f=fixture();expect(()=>readSnapshot(JSON.stringify(f.snapshot))).not.toThrow();f.snapshot.prompts.judge.content="changed";expect(()=>readSnapshot(JSON.stringify(f.snapshot))).toThrow();expect(()=>readSnapshot(null)).toThrow();});
   it("ignores explicit absent evidence instead of failing on its empty quote or filling coverage",async()=>{
