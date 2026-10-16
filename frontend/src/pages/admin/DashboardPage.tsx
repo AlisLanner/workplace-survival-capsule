@@ -75,7 +75,7 @@ export function DashboardPage() {
               </div>
             );
           })}
-          {data && !Object.keys(data.average_dimension_scores).length ? <p className="muted">暂无已完成会话。</p> : null}
+          {data && !data.groups?.length ? <p className="muted">暂无符合统计条件的报告。</p> : null}
         </div>
       </div>
     </>

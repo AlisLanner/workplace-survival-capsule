@@ -9,7 +9,10 @@ export function locateEvidence(e:Evidence,d:Definition,state:Ge8State,messages:T
   const msg=messages[index];
   if(!slot || !msg || !e.quote?.trim() || /__ASSESSMENT_TIME_EXPIRED__/.test(msg.content))throw new Error("证据槽位或候选人消息无效");
   const start=msg.content.indexOf(e.quote);
-  if(start<0 || !["none","partial","sufficient"].includes(e.sufficiency) || !["support","counter","mixed"].includes(e.valence) || !e.reason?.trim())throw new Error("引文或证据状态无效");
+  if(start<0)throw new Error(`引文不存在于候选人消息：${e.slot_id}/${e.message_id}；quote必须是该消息中的连续原文，不能改写。`);
+  if(!["none","partial","sufficient"].includes(e.sufficiency))throw new Error(`sufficiency字段无效：${e.slot_id}实际为${String(e.sufficiency)}；只能是none、partial或sufficient，counter是valence而非充分性。`);
+  if(!["support","counter","mixed"].includes(e.valence))throw new Error(`valence字段无效：${e.slot_id}；有引文时只能是support、counter或mixed。`);
+  if(!e.reason?.trim())throw new Error(`reason不能为空：${e.slot_id}。`);
   if(slot.required_fact_ids.some(f=>{const id=state.released_facts[f];return !id || !messages.slice(0,index).some(m=>m.id===id && m.senderType==="agent");}))throw new Error("必要事实尚未送达该回应前");
   return {...e,start,end:start+e.quote.length};
 }

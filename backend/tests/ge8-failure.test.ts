@@ -52,4 +52,12 @@ describe("bounded GE8 failures",()=>{
     expect((await director(f.snapshot,f.state,nextProbe(d,f.state),messages)).slot_evidence).toHaveLength(16);
     expect(call.mock.calls[0][0].maxTokens).toBe(6000);expect(call.mock.calls[0][0].maxAttempts).toBe(1);
   });
+  it("names a valence accidentally put into sufficiency so the bounded repair can correct that field",async()=>{
+    const f=fixture();f.snapshot.prompts.director=f.snapshot.prompts.judge;const d=f.snapshot.definition;for(const fact of d.public_facts)f.state.released_facts[fact.id]="facts";
+    const messages=[{id:"facts",senderType:"agent",senderName:"系统",content:"任务卡",roundIndex:0},{id:"latest",senderType:"user",senderName:"候选人",content:"我不承担任何后续工作。",roundIndex:14}];
+    const e={slot_id:d.slots[0].slot_id,message_id:"latest",quote:messages[1].content,sufficiency:"counter",valence:"counter",reason:"明确回避行动"};
+    call.mockResolvedValueOnce(JSON.stringify({should_finish:false,slot_evidence:[e]})).mockResolvedValueOnce(JSON.stringify({should_finish:false,slot_evidence:[{...e,sufficiency:"sufficient"}]}));
+    const r=await director(f.snapshot,f.state,nextProbe(d,f.state),messages);expect(call).toHaveBeenCalledTimes(2);expect(r.slot_evidence[0].sufficiency).toBe("sufficient");
+    expect(JSON.parse(call.mock.calls[1][0].userPrompt).repair.validation_error).toContain("sufficiency字段无效");expect(JSON.parse(call.mock.calls[1][0].userPrompt).repair.validation_error).toContain("counter是valence");
+  });
 });

@@ -10,6 +10,19 @@ export interface Attempt { sample:number; attempt:number; ok:boolean; error?:str
 export function validateSample(input:unknown,d:Definition,state:Ge8State,messages:TranscriptMessage[]):JudgeSample {
   const x=input as JudgeSample;
   if(!x || !Array.isArray(x.dimension_results) || x.dimension_results.length!==8)throw new Error("Judge必须返回8维");
+  // Report concurrent, already-forbidden contract errors together so the single repair can address all of them.
+  const incomplete:string[]=[],duplicates=new Set<string>(),quotes=new Map<string,string>();
+  for(const dim of x.dimension_results)for(const slot of Array.isArray(dim?.slot_results)?dim.slot_results:[]) {
+    if(dim.status==="rated" && slot?.sufficiency!=="sufficient")incomplete.push(`${dim.id}/${slot?.slot_id?.split(":").at(-1)}`);
+    for(const e of Array.isArray(slot?.evidence)?slot.evidence:[])if(e?.message_id && e?.quote) {
+      const key=e.message_id+":"+e.quote,other=quotes.get(key);
+      if(other && other!==dim.id)duplicates.add(`${other}/${dim.id} 消息${e.message_id}：“${e.quote.slice(0,45)}”`);quotes.set(key,dim.id);
+    }
+  }
+  if(incomplete.length||duplicates.size)throw new Error([
+    incomplete.length?`充分性冲突${incomplete.join("、")}：partial或none不能rated，维度score应为null；只有两个点均有充分原话与机会才可评分。`:"",
+    duplicates.size?`跨维重复取证${[...duplicates].slice(0,4).join("；")}。拆出各维独立、连续的行为原话，不能重复引用同一完整片段；无法判断保留null。`:""
+  ].filter(Boolean).join(" "));
   const seen=new Set<string>(); const usedQuotes=new Map<string,string>();
   const results=x.dimension_results.map((dim,i)=>{
     const def=d.dimensions[i];
@@ -94,7 +107,7 @@ export async function judge(snapshot:Snapshot,state:Ge8State,messages:Transcript
         const opportunities=Object.fromEntries(Object.entries(state.slots).map(([id,s])=>[id,{opportunities:s.opportunities}]));
         const result=snapshot.model.mock?validateSample(mockSample(snapshot,state),snapshot.definition,state,messages):await auditedCall(`judge/${sample}/${attempt}`,{systemPrompt:snapshot.prompts.judge.content,userPrompt:JSON.stringify({definition:snapshot.definition,opportunities,released_facts:state.released_facts,messages,...(validationError?{repair:{validation_error:validationError,instruction:"按原契约重新输出完整合法JSON。不得编造原话，无法判断的维度保留null。"}}:{})}),model:snapshot.model.judge_model,temperature:params.temperature,maxTokens:params.max_tokens,thinking:params.thinking,timeoutMs:params.timeout_ms,baseUrl:snapshot.model.base_url,maxAttempts:1,allowMockFallback:false},raw=>validateSample(strictJson(raw),snapshot.definition,state,messages));
         attempts.push({sample,attempt,ok:true,elapsed_ms:Date.now()-started});progress?.(++count);return result;
-      }catch(error){validationError=(error instanceof Error?error.message:String(error)).slice(0,400);attempts.push({sample,attempt,ok:false,error:validationError,elapsed_ms:Date.now()-started});}
+      }catch(error){validationError=(error instanceof Error?error.message:String(error)).slice(0,1000);attempts.push({sample,attempt,ok:false,error:validationError,elapsed_ms:Date.now()-started});}
     }
     progress?.(++count);return null;
   }));

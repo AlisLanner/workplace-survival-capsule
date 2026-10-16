@@ -22,6 +22,13 @@ function fixture(index=0) {
   return {d,state,messages,snapshot,sample,evidence};
 }
 describe("GE8 measurement contract",()=>{
+  it("reports simultaneous duplicate quotes and partial/rated conflicts in one bounded repair hint",()=>{
+    const f=fixture();const first=f.sample.dimension_results[0].slot_results[0].evidence[0];
+    const other=f.sample.dimension_results[1].slot_results[0];other.evidence=[{...first,slot_id:other.slot_id}];
+    f.sample.dimension_results[2].slot_results[0].sufficiency="partial";
+    expect(()=>validateSample(f.sample,f.d,f.state,f.messages)).toThrow(/充分性冲突GE03/);
+    expect(()=>validateSample(f.sample,f.d,f.state,f.messages)).toThrow(/跨维重复取证GE01\/GE02/);
+  });
   it("registers exactly A/B/C/E with authoritative names, 64 unique points and explicit roles",()=>{
     expect(definitions.map(d=>d.scenario_code)).toEqual(["A","B","C","E"]);
     expect(dimensions.map(d=>d.name)).toEqual(["领导与决策","支持与合作","互动与呈现","分析与解释","创造与概念化","组织与执行","适应与应对","进取与绩效"]);
