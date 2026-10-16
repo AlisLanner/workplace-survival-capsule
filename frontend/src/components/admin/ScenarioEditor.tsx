@@ -20,6 +20,8 @@ export function ScenarioEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  if(scenario.assessmentVersion)return <article className="glass" style={{padding:24}}><h3>{scenario.title}</h3><p className="small muted">{scenario.assessmentVersion} · 任务内容已冻结，变更须安装新测量版本。</p><p style={{whiteSpace:"pre-wrap"}}>{scenario.backgroundForUser}</p></article>;
+
   function parseGroupChatRounds() {
     let parsed: unknown;
     try {

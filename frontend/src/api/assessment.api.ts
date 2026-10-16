@@ -38,6 +38,13 @@ export function sendMessage(sessionId: string, content: string) {
  */
 export function normalizeReport(raw: unknown): Report {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  if(r.assessment_version) {
+    if(r.schema_version!=="ge8/1" || !Array.isArray(r.dimension_results) || r.dimension_results.length!==8)throw new Error("报告版本或八维结构无法识别，请保留记录并联系管理员复核。");
+    const dims=r.dimension_results as NonNullable<Report["dimension_results"]>;
+    if(new Set(dims.map(d=>d.id)).size!==8 || dims.some((d,i)=>d.id!==`GE0${i+1}` || (d.status==="rated"?typeof d.score!=="number"||!Number.isInteger(d.score)||d.score<0||d.score>20:d.score!==null)))throw new Error("报告分值或缺失状态无效，已停止展示。");
+    // New schemas are already validated by the server. Preserve nulls, names/order and all sampling/audit metadata.
+    return r as unknown as Report;
+  }
   const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   const asRecord = <T,>(v: unknown): Record<string, T> =>
     v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, T>) : {};

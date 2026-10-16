@@ -9,15 +9,15 @@ import {
   updateScenarioController
 } from "../controllers/admin.controller";
 import { asyncHandler } from "../utils/asyncHandler";
+import { retryScoring } from "../assessment/session";
 
 function adminAuth(req: Request, res: Response, next: NextFunction) {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) {
-    // Development mode — warn but allow
-    console.warn("[admin] ADMIN_SECRET not set — admin routes are unprotected");
-    return next();
+    res.status(401).json({error:"ADMIN_SECRET未配置，后台私有记录不可访问；请在本机配置管理口令。"});
+    return;
   }
-  const token = req.headers["x-admin-secret"] ?? req.query.token;
+  const token = req.headers["x-admin-secret"];
   if (token !== secret) {
     res.status(401).json({ error: "Unauthorized — invalid or missing admin token" });
     return;
@@ -36,4 +36,5 @@ adminRouter.get("/prompts", asyncHandler(listPromptsController));
 adminRouter.put("/prompts/:key", asyncHandler(updatePromptController));
 adminRouter.get("/sessions", asyncHandler(listSessionsController));
 adminRouter.get("/sessions/:id", asyncHandler(getSessionDetailController));
+adminRouter.post("/sessions/:id/retry-scoring", asyncHandler(async(req,res)=>{res.json(await retryScoring(req.params.id));}));
 

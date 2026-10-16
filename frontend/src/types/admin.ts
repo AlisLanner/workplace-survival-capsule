@@ -4,7 +4,8 @@ export interface DashboardData {
   total_sessions: number;
   completed_sessions: number;
   running_sessions: number;
-  average_score: number;
+  average_score: number|null;
+  groups?: Array<{scenario_id:string;assessment_version:string;model_config:string;count:number;average_score:number;average_dimension_scores:Record<string,number>}>;
   average_dimension_scores: Record<string, number>;
 }
 
@@ -20,6 +21,7 @@ export interface PromptTemplate {
 }
 
 export interface AdminSession {
+  assessmentVersion?:string|null;
   id: string;
   status: string;
   round: number;
@@ -31,6 +33,7 @@ export interface AdminSession {
 }
 
 export interface AdminSessionDetail {
+  assessment_audit?: Record<string,unknown>|null;
   session: AdminSession & {
     blackboardState: Record<string, unknown>;
   };

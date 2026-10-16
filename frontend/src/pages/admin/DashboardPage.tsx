@@ -49,16 +49,18 @@ export function DashboardPage() {
           <div className="v">{data ? <span ref={completed.ref}>{completed.text}</span> : "-"}</div>
         </div>
         <div className="glass stat" data-reveal ref={averageCardReveal} style={{ "--d": ".2s" } as CSSProperties}>
-          <div className="k">平均参考指数</div>
+          <div className="k">评分统计</div>
           <div className="v">
-            {data ? <span ref={average.ref}>{average.text}</span> : "-"}
-            {data ? <small> / 20</small> : null}
+            按情境及版本分组
           </div>
         </div>
       </div>
 
+      {(data?.groups??[]).map(group=><section className="glass" key={group.scenario_id+group.assessment_version+group.model_config} style={{padding:24,marginBottom:20}}><h3>{group.scenario_id} · {group.assessment_version}</h3><p className="small muted">有效完整非模拟报告 {group.count} 份 · 平均总分 {group.average_score} / 160</p><details><summary>模型配置</summary><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{group.model_config}</pre></details><div className="dbars">{Object.entries(group.average_dimension_scores).map(([name,value])=><p key={name}>{name}：{value} / 20</p>)}</div></section>)}
+
       <div className="glass" data-reveal ref={barsCardReveal} style={{ padding: "28px", "--d": ".25s" } as CSSProperties}>
-        <div className="sec-title">维度均分</div>
+        <div className="sec-title">统计口径</div>
+        <p className="muted">仅纳入同一情境、测量版本及实际模型配置的完整非模拟报告。缺失、评分失败、待复核和旧版演示不与新版混合计算。</p>
         <div className="dbars" ref={barsReveal}>
           {Object.entries(data?.average_dimension_scores ?? {}).map(([key, value], i) => {
             const percent = Math.min(100, Math.round((value / 20) * 100));

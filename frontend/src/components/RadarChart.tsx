@@ -7,7 +7,7 @@ const RADIUS = 122;
 const FONT = "var(--body)";
 
 /**
- * Self-drawn radar (viewBox 380, R=122, 11 axes) replacing recharts.
+ * Self-drawn radar; the report supplies its frozen axis names and order.
  * Animation runs once after mount: rings fade in, gold polygon draws with
  * stroke-dasharray (1.4s), fill fades in (delay .9s), vertices pop in one by one.
  */
@@ -103,8 +103,7 @@ export function RadarChart({ data }: { data: Report["radar_chart_data"] }) {
       })}
       {items.map((item, i) => {
         const p = point(i);
-        const anchor: "start" | "middle" | "end" =
-          Math.abs(Math.cos(p.angle)) < 0.3 ? "middle" : Math.cos(p.angle) > 0 ? "start" : "end";
+        const anchor = "middle";
         return (
           <text
             key={item.name}

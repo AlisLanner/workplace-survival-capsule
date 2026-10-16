@@ -10,6 +10,8 @@ import {
 import { createInitialBlackboard, type Blackboard } from "./blackboard.service";
 import { runAssessmentTurn, runAssessmentTurnStreaming, type StreamingTurnEvents } from "./orchestrator.service";
 import type { VisibleReply } from "../types/agent";
+import { startGe8, runGe8 } from "../assessment/session";
+import { legacyScenario } from "../assessment/legacy";
 
 export interface StartAssessmentInput {
   user_id?: string;
@@ -83,6 +85,8 @@ export async function startAssessment(input: StartAssessmentInput) {
     throw new Error("Scenario not found or inactive");
   }
 
+  if (scenario.assessmentVersion) return startGe8(scenario.id, input);
+
   const userId = await resolveUser(input);
   const blackboard = resolveInitialBlackboard(scenario);
   const openingMessage = resolveOpeningMessage(scenario);
@@ -134,6 +138,9 @@ export async function sendAssessmentMessage(sessionId: string, content: string) 
     throw new Error("Session not found");
   }
 
+  if (session.assessmentVersion) return runGe8(session.id, cleanContent);
+  session.scenario = await legacyScenario(session.scenario);
+
   return runAssessmentTurn({
     session: {
       ...session,
@@ -167,6 +174,8 @@ export async function getAssessmentSession(sessionId: string) {
   }
 
   const normalizedSession = normalizeSession(session);
+
+  if(!session.assessmentVersion)session.scenario=await legacyScenario(session.scenario);
 
   return {
     session: normalizedSession,
@@ -221,6 +230,13 @@ export async function sendAssessmentMessageStreaming(
     events.onError("Session not found");
     return;
   }
+
+  if (session.assessmentVersion) {
+    try { events.onDone(await runGe8(session.id, cleanContent, events)); }
+    catch (error) { events.onError(error instanceof Error ? error.message : "Internal error"); }
+    return;
+  }
+  session.scenario = await legacyScenario(session.scenario);
 
   await runAssessmentTurnStreaming({
     session: {

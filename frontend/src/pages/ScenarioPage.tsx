@@ -135,7 +135,8 @@ export function ScenarioPage() {
       <div className="scn-grid" ref={gridRef}>
         {scenarios.map((scenario, i) => {
           const presentation = getScenarioPresentation(scenario);
-          const opening = scenario.openingMessage;
+          const opening = scenario.assessmentVersion?null:scenario.openingMessage;
+          const code=({project_demo_crisis:"A",coffee_shop_complaint:"B",promo_outage_crisis:"C",handover_review_crisis:"D",first_week_assignment:"E"} as Record<string,string>)[scenario.id]??"";
 
           return (
             <article
@@ -146,7 +147,7 @@ export function ScenarioPage() {
             >
               <div className="scn-cover">
                 <img src={presentation.backgroundImage} alt={scenario.title} />
-                <span className="tagline">SCENARIO {String(i + 1).padStart(2, "0")}</span>
+                <span className="tagline">SCENARIO {code}</span>
               </div>
               <div className="scn-body">
                 <h3 className="h3">{scenario.title}</h3>
@@ -154,6 +155,7 @@ export function ScenarioPage() {
                   <span className="chip">{scenario.maxRound} 轮</span>
                   <span className="chip">群聊机制</span>
                   <span className="chip">{presentation.badge}</span>
+                  <span className="chip">{scenario.assessmentVersion?"统一八维新版":"旧版演示 · 独立解释"}</span>
                 </div>
                 <p className="muted small">{scenario.description}</p>
                 <div className="task">

@@ -1,4 +1,6 @@
 import { prisma } from "../db/prisma";
+import { VERSION } from "../assessment/definitions";
+import { legacyScenario } from "../assessment/legacy";
 import {
   normalizeDiscussion,
   normalizeScenario,
@@ -7,28 +9,6 @@ import {
   parseJsonField,
   stringifyJson
 } from "../utils/jsonField";
-
-type ReportShape = {
-  dimension_scores?: Record<string, number>;
-};
-
-const currentDashboardDimensions = [
-  "信息辨别",
-  "交付切分",
-  "备选方案",
-  "承诺边界",
-  "向上对齐",
-  "横向协商",
-  "新人赋能",
-  "压力表达",
-  "利害识别",
-  "现场止损",
-  "规则边界",
-  "面子修复",
-  "员工修复",
-  "后厨协同",
-  "系统改进"
-];
 
 function average(values: number[]): number {
   if (!values.length) {
@@ -44,38 +24,23 @@ export async function getDashboardData() {
     prisma.assessmentSession.count({ where: { status: "running" } }),
     prisma.assessmentSession.findMany({
       where: { status: "finished" },
-      select: { totalScore: true, reportJson: true }
+      select: { totalScore: true, reportJson: true, scenarioId:true, assessmentVersion:true }
     })
   ]);
 
-  const reports = finishedSessions.map((session) =>
-    parseJsonField<ReportShape | null>(session.reportJson, null)
-  );
-  // 后台总览只聚合当前测评体系维度，历史报告中的旧维度不进入“维度均分”。
-  const dimensions = currentDashboardDimensions.filter((dimension) =>
-    reports.some((report) => typeof report?.dimension_scores?.[dimension] === "number")
-  );
-  const averageDimensionScores: Record<string, number> = {};
-
-  for (const dimension of dimensions) {
-    averageDimensionScores[dimension] = average(
-      reports
-        .map((report) => report?.dimension_scores?.[dimension])
-        .filter((score): score is number => typeof score === "number")
-    );
+  const grouped = new Map<string,{scenario_id:string;assessment_version:string;model_config:string;count:number;total:number;dimensions:Record<string,number[]>}>();
+  for(const session of finishedSessions) {
+    const report=parseJsonField<any>(session.reportJson,null);
+    if(session.totalScore===null || report?.mock_generated || report?.report_status!=="confident")continue;
+    const model=JSON.stringify(report?.assessment_meta?.model??"legacy");
+    const key=JSON.stringify([session.scenarioId,session.assessmentVersion??"legacy",model]);
+    const group=grouped.get(key)??{scenario_id:session.scenarioId,assessment_version:session.assessmentVersion??"legacy",model_config:model,count:0,total:0,dimensions:{}};
+    group.count++;group.total+=session.totalScore;
+    for(const [name,value]of Object.entries(report.dimension_scores??{}))if(typeof value==="number")(group.dimensions[name]??=[]).push(value);
+    grouped.set(key,group);
   }
+  return {total_sessions:totalSessions,completed_sessions:completedSessions,running_sessions:runningSessions,average_score:null,average_dimension_scores:{},groups:[...grouped.values()].map(g=>({scenario_id:g.scenario_id,assessment_version:g.assessment_version,model_config:g.model_config,count:g.count,average_score:Number((g.total/g.count).toFixed(1)),average_dimension_scores:Object.fromEntries(Object.entries(g.dimensions).map(([k,v])=>[k,average(v)]))}))};
 
-  return {
-    total_sessions: totalSessions,
-    completed_sessions: completedSessions,
-    running_sessions: runningSessions,
-    average_score: average(
-      finishedSessions
-        .map((session) => session.totalScore)
-        .filter((score): score is number => typeof score === "number")
-    ),
-    average_dimension_scores: averageDimensionScores
-  };
 }
 
 export async function listScenarios() {
@@ -86,6 +51,8 @@ export async function listScenarios() {
 }
 
 export async function updateScenario(id: string, data: Record<string, unknown>) {
+  const current=await prisma.scenario.findUnique({where:{id}});
+  if(current?.assessmentVersion && Object.keys(data).some(k=>!["status"].includes(k)))throw new Error("新版任务内容已冻结；须创建并安装新测量版本后再修改。现有会话不受影响。");
   const allowed = {
     title: data.title,
     description: data.description,
@@ -114,6 +81,23 @@ export async function updatePrompt(key: string, data: { content?: string; name?:
   const current = await prisma.promptTemplate.findUnique({ where: { key } });
   if (!current) {
     throw new Error("Prompt template not found");
+  }
+
+  if(key.startsWith("ge8-")) {
+    const version=key.split("/")[0];
+    if(data.active===false)throw new Error("版本模板不能停用；请发布新修订。");
+    if(!data.content?.trim())throw new Error("新版模板正文不能为空");
+    return prisma.$transaction(async tx=>{
+      const bundle=await tx.promptBundle.findFirst({where:{active:true,id:{startsWith:version+"/"}},orderBy:{createdAt:"desc"}});
+      if(!bundle)throw new Error("当前模板包不存在");
+      const keys=JSON.parse(bundle.keysJson) as Record<string,string>;const name=Object.keys(keys).find(n=>keys[n]===key);
+      if(!name)throw new Error("正在编辑旧修订，请刷新后编辑当前模板");
+      const revisions=await tx.promptBundle.count({where:{id:{startsWith:version+"/"}}});
+      const id=`${version}/r${String(revisions+1).padStart(2,"0")}`;const newKey=`${id}/${name}`;
+      const created=await tx.promptTemplate.create({data:{key:newKey,name:data.name??current.name,content:data.content!,version:current.version+1}});
+      await tx.promptBundle.update({where:{id:bundle.id},data:{active:false}});
+      await tx.promptBundle.create({data:{id,keysJson:JSON.stringify({...keys,[name]:newKey})}});return created;
+    });
   }
 
   return prisma.promptTemplate.update({
@@ -161,11 +145,11 @@ export async function listSessions() {
     });
   }
 
-  return sessions.map((session) => ({
+  return Promise.all(sessions.map(async(session) => ({
     ...normalizeSession(session),
     status: abandonedIds.includes(session.id) ? "abandoned" : session.status,
-    scenario: normalizeScenario(session.scenario)
-  }));
+    scenario: normalizeScenario(session.assessmentVersion?session.scenario:await legacyScenario(session.scenario))
+  })));
 }
 
 export async function getSessionDetail(sessionId: string) {
@@ -185,6 +169,7 @@ export async function getSessionDetail(sessionId: string) {
   }
 
   const normalizedSession = normalizeSession(session);
+  if(!session.assessmentVersion)session.scenario=await legacyScenario(session.scenario);
 
   return {
     session: {
@@ -194,6 +179,12 @@ export async function getSessionDetail(sessionId: string) {
     messages: session.messages,
     group_discussions: session.groupDiscussions.map(normalizeDiscussion),
     agent_trace: session.agentTraceEvents.map(normalizeTraceEvent),
-    report: normalizedSession.reportJson
+    report: normalizedSession.reportJson,
+    assessment_audit: session.assessmentVersion ? {
+      snapshot:parseJsonField(session.assessmentSnapshotJson, null),
+      state:parseJsonField(session.blackboardState, {}),
+      scoring_run_id:session.scoringRunId,scoring_attempts:session.scoringAttempts,
+      calls:await prisma.assessmentCallAudit.findMany({where:{sessionId},orderBy:{createdAt:"asc"}})
+    } : null
   };
 }

@@ -9,10 +9,11 @@ import { getDimensionColor, getDimensionLabel } from "../../config/dimensions";
 import { useReveal } from "../../hooks/useReveal";
 import type { AdminSessionDetail } from "../../types/admin";
 import type { AgentTraceEvent, Report } from "../../types/assessment";
+import { Ge8Report } from "../../components/Ge8Report";
 
 function confidenceLevel(variance: number) {
-  if (variance < 30) return { label: "高可信", cls: "conf-high" };
-  if (variance < 80) return { label: "中可信", cls: "conf-mid" };
+  if (variance < 30) return { label: "评分波动较小", cls: "conf-high" };
+  if (variance < 80) return { label: "评分波动需关注", cls: "conf-mid" };
   return { label: "建议人工复核", cls: "conf-low" };
 }
 
@@ -131,9 +132,10 @@ export function SessionDetailPage() {
 
   const s = detail.session;
   const report = detail.report as Report | null;
+  if(report?.assessment_version)return <>{heading}<Ge8Report report={report} messages={detail.messages}/><section className="glass" style={sectionStyle}><GraphTimeline events={detail.agent_trace}/></section><details style={sectionStyle}><summary>后台审计快照与状态</summary><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{JSON.stringify(detail.assessment_audit,null,2)}</pre></details></>;
   const scoringFailed = report?.report_status === "scoring_failed";
   const scoreableReport = report && !scoringFailed ? report : null;
-  const conf = scoreableReport?.sampling_stats ? confidenceLevel(scoreableReport.sampling_stats.variance) : null;
+  const conf = scoreableReport?.sampling_stats ? confidenceLevel(scoreableReport.sampling_stats.variance??Infinity) : null;
   const status = statusMeta(report);
   const sortedDims = scoreableReport ? Object.entries(scoreableReport.dimension_scores).sort((a, b) => b[1] - a[1]) : [];
   const dimKeys = scoreableReport ? Object.keys(scoreableReport.dimension_scores) : [];
@@ -216,7 +218,7 @@ export function SessionDetailPage() {
               <div className="confidence-bar">
                 <div
                   className={`confidence-bar-fill ${conf!.cls}`}
-                  style={{ width: `${Math.min(100, (report.sampling_stats.variance / 120) * 100)}%` }}
+                  style={{ width: `${Math.min(100, ((report.sampling_stats.variance ?? 0) / 120) * 100)}%` }}
                 />
               </div>
               <span className="small">方差 {report.sampling_stats.variance} · {conf!.label}</span>

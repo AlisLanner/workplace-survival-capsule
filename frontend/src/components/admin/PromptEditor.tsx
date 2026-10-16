@@ -14,6 +14,7 @@ export function PromptEditor({
     active: prompt.active
   });
   const [saving, setSaving] = useState(false);
+  const versioned=prompt.key.startsWith("ge8-");
 
   async function save() {
     setSaving(true);
@@ -34,6 +35,7 @@ export function PromptEditor({
         <label className={`switch${draft.active ? " on" : ""}`} title={draft.active ? "启用中" : "已停用"}>
           <input
             type="checkbox"
+            disabled={versioned}
             checked={draft.active}
             onChange={(event) => setDraft({ ...draft, active: event.target.checked })}
             aria-label="启用"
@@ -41,6 +43,7 @@ export function PromptEditor({
         </label>
       </div>
       <div className="nm">{draft.name}</div>
+      {versioned?<p className="small muted">保存会发布新修订，仅影响之后的新会话。进行中的会话保留冻结模板。</p>:null}
       <pre>{draft.content}</pre>
       <details>
         <summary>编辑</summary>

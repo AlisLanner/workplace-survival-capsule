@@ -8,10 +8,12 @@ import { useCountUp } from "../hooks/useCountUp";
 import { useReveal } from "../hooks/useReveal";
 import { useSpotlight } from "../hooks/useSpotlight";
 import type { Report } from "../types/assessment";
+import type { Message } from "../types/assessment";
+import { Ge8Report } from "../components/Ge8Report";
 
 function confidenceLevel(variance: number) {
-  if (variance < 30) return { label: "高可信", cls: "conf-high" };
-  if (variance < 80) return { label: "中可信", cls: "conf-mid" };
+  if (variance < 30) return { label: "评分波动较小", cls: "conf-high" };
+  if (variance < 80) return { label: "评分波动需关注", cls: "conf-mid" };
   return { label: "建议人工复核", cls: "conf-low" };
 }
 
@@ -85,6 +87,7 @@ export function ReportPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sceneTitle, setSceneTitle] = useState<string | null>(null);
+  const [messages,setMessages]=useState<Message[]>([]);
   useSpotlight();
 
   useEffect(() => {
@@ -93,7 +96,7 @@ export function ReportPage() {
       .then(setReport)
       .catch((err: Error) => setError(err.message));
     getSession(sessionId)
-      .then((detail) => setSceneTitle(detail.scenario.title))
+      .then((detail) => {setSceneTitle(detail.scenario.title);setMessages(detail.messages);})
       .catch(() => {});
   }, [sessionId]);
 
@@ -111,6 +114,8 @@ export function ReportPage() {
   if (!report) {
     return <main className="wrap page loading">正在生成观察报告…</main>;
   }
+
+  if(report.assessment_version) return <main className="wrap page"><Ge8Report report={report} messages={messages}/><Link to="/scenarios" className="btn btn-ghost">返回情境列表</Link></main>;
 
   if (report.report_status === "scoring_failed") {
     return <ScoringFailedView report={report} />;
@@ -155,7 +160,7 @@ function ReportBody({ report, sceneTitle }: { report: Report; sceneTitle: string
   const decimals = total !== null && !Number.isInteger(total) ? 1 : 0;
   const { ref: scoreRef, text: scoreText } = useCountUp(total ?? 0, decimals);
 
-  const conf = report.sampling_stats ? confidenceLevel(report.sampling_stats.variance) : null;
+  const conf = report.sampling_stats ? confidenceLevel(report.sampling_stats.variance??Infinity) : null;
   const status = statusMeta(report);
   const sortedDims = Object.entries(report.dimension_scores).sort((a, b) => b[1] - a[1]);
   const dimKeys = Object.keys(report.dimension_scores);
@@ -266,7 +271,7 @@ function ReportBody({ report, sceneTitle }: { report: Report; sceneTitle: string
                 <div className="confidence-bar">
                   <div
                     className={`confidence-bar-fill ${conf!.cls}`}
-                    style={{ width: `${Math.min(100, (report.sampling_stats.variance / 120) * 100)}%` }}
+                    style={{ width: `${Math.min(100, ((report.sampling_stats.variance ?? 0) / 120) * 100)}%` }}
                   />
                 </div>
                 <span className="small muted">五次采样 · σ²={report.sampling_stats.variance}</span>

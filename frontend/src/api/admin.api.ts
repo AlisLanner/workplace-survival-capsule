@@ -31,7 +31,7 @@ export function listPrompts() {
 }
 
 export function updatePrompt(key: string, data: Partial<Pick<PromptTemplate, "content" | "name" | "active">>) {
-  return request<PromptTemplate>(`/api/admin/prompts/${key}`, {
+  return request<PromptTemplate>(`/api/admin/prompts/${encodeURIComponent(key)}`, {
     method: "PUT",
     headers: adminHeaders(),
     body: JSON.stringify(data)

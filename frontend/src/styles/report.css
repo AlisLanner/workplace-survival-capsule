@@ -123,3 +123,11 @@
   border:1px solid rgba(227,195,126,.25);
 }
 .final-card p{font-size:14.5px;color:var(--ink-2);line-height:1.85;}
+.ge8-dimensions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.ge8-dimensions h3 { display:flex; flex-wrap:wrap; align-items:center; gap:10px; line-height:1.6; }
+.ge8-report blockquote { margin:12px 0; padding-left:14px; border-left:2px solid #766547; overflow-wrap:anywhere; }
+.ge8-report p { overflow-wrap:anywhere; line-height:1.8; }
+.ge8-slot { padding-top:12px; border-top:1px solid rgba(255,255,255,.08); margin-top:16px; }
+.ge8-message { padding:16px 0; scroll-margin-top:80px; border-top:1px solid rgba(255,255,255,.08); }
+.ge8-message:target { background:rgba(227,195,126,.12); }
+@media(max-width:720px) { .ge8-dimensions { grid-template-columns:1fr; } }

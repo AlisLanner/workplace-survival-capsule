@@ -1,4 +1,5 @@
 export interface Scenario {
+  assessmentVersion?: string|null;
   id: string;
   title: string;
   description: string;
@@ -89,7 +90,16 @@ export interface SendMessageResponse {
 }
 
 export interface Report {
-  total_score: number;
+  assessment_version?: string;
+  schema_version?: string;
+  scenario_id?: string;
+  dimension_results?: Array<{
+    id:string;name:string;score:number|null;status:"rated"|"not_observed"|"insufficient"|"scoring_failed";analysis:string;
+    slot_results:Array<{slot_id:string;sufficiency:string;valence:string|null;opportunity:Array<{question_message_id:string;fact_ids:string[];round:number}>;evidence:Array<{message_id:string;quote:string;reason:string}>}>;
+  }>;
+  review_reasons?: string[];
+  assessment_meta?: Record<string,unknown>;
+  total_score: number|null;
   level: string;
   dimension_scores: Record<string, number>;
   dimension_analysis: Record<string, string>;
@@ -123,7 +133,7 @@ export interface Report {
   };
   sampling_stats?: {
     scores: number[];
-    variance: number;
+    variance: number|null;
     dim_variances?: Record<string, number>;
   };
 }
