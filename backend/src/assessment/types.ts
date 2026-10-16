@@ -17,13 +17,14 @@ export interface Definition {
   slots: Slot[]; public_facts: Fact[]; role_facts: Record<AgentName, Fact[]>;
   events: Array<{ id: string; round: number; agent: AgentName; facts: Fact[] }>;
   round_policy: { min: number; max: number; max_consecutive_agent_rounds?:number };
-  scoring_policy: { samples: number; total_variance_limit: number; dimension_range_limit: number; bands: string[]; boundaries: string[] };
+  scoring_policy: { samples: number; total_variance_limit: number; dimension_range_limit: number; bands: string[]; boundaries: string[]; evidence_policy?:"response-quality/1" };
   anchors: Array<{ dimension_id: DimensionId; low: string; middle: string; high: string; missing: string }>;
   prompt_bundle_version: string;
 }
 export interface Evidence {
   slot_id: string; message_id: string; quote: string; sufficiency: Sufficiency; valence: Valence; reason: string;
   start?: number; end?: number;
+  response_context?: { question_message_id:string; answered_opportunities:number };
 }
 export interface Opportunity {
   question_message_id: string; fact_ids: string[]; event_id?: string; round: number;

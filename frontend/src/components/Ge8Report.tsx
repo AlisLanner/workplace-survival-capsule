@@ -27,8 +27,8 @@ export function Ge8Report({report,messages=[]}:{report:Report;messages?:Message[
         <h3>{dim.name} <span className="chip">{dim.score===null?labels[dim.status]:`${dim.score} / 20`}</span></h3>
         <p>{dim.analysis}</p>
         {dim.slot_results.map(slot=><div key={slot.slot_id} className="ge8-slot">
-          <p className="small muted">观察点 {slot.slot_id.split(":").at(-1)} · {slot.sufficiency==="sufficient"?"可判断":slot.sufficiency==="partial"?"仍需补充":"未形成证据"} · 实际机会 {slot.opportunity.length}</p>
-          {slot.evidence.map((e,i)=><blockquote key={e.message_id+i}><a href={`#message-${e.message_id}`}>“{e.quote}”</a><p className="small muted">{e.reason}</p></blockquote>)}
+          <p className="small muted">观察点 {slot.slot_id.split(":").at(-1)} · {slot.sufficiency==="sufficient"?"可判断":slot.sufficiency==="partial"?(dim.status==="rated"?"已观察到表现缺口":"仍需补充"):"未形成证据"} · 实际机会 {slot.opportunity.length}</p>
+          {slot.evidence.map((e,i)=><blockquote key={e.message_id+i}><a href={`#message-${e.message_id}`}>“{e.quote}”</a><p className="small muted">{e.reason}</p>{e.response_context?<p className="small muted">结合<a href={`#message-${e.response_context.question_message_id}`}>本次明确提问</a>判断；此前已完成 {e.response_context.answered_opportunities} 次相关提问与回应。</p>:null}</blockquote>)}
           {!slot.evidence.length?<p className="small muted">无可定位原话，保留缺失。</p>:null}
         </div>)}
       </section>)}

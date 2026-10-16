@@ -8,7 +8,7 @@ export type { CandidateCatalog } from "./evidenceProtocolV1";
 export const EVIDENCE_PROTOCOL="ge8-evidence-ranges/2" as const;
 export const EVIDENCE_PROTOCOL_SPEC={id:EVIDENCE_PROTOCOL,segmentation_hash:v1.EVIDENCE_PROTOCOL_HASH,wire:"scores:[[dimension_id,score,analysis]];evidence:[[point_code,first_segment_id,last_segment_id,sufficiency,valence,reason]]",derivation:"fixed sixteen points; sufficiency and valence derived once from grouped evidence; no automatic scoring of missing points"};
 export const EVIDENCE_PROTOCOL_HASH=hash(EVIDENCE_PROTOCOL_SPEC);
-export function protocolForVersion(version:string){return version==="ge8-20261016.10"?v1.EVIDENCE_PROTOCOL:version==="ge8-20261016.11"?EVIDENCE_PROTOCOL:undefined;}
+export function protocolForVersion(version:string){return version==="ge8-20261016.10"?v1.EVIDENCE_PROTOCOL:["ge8-20261016.11","ge8-20261016.12"].includes(version)?EVIDENCE_PROTOCOL:undefined;}
 export function evidenceProtocolHash(protocol:string){if(protocol===v1.EVIDENCE_PROTOCOL)return v1.EVIDENCE_PROTOCOL_HASH;if(protocol===EVIDENCE_PROTOCOL)return EVIDENCE_PROTOCOL_HASH;throw new Error("未知评分引用协议");}
 export const requiresEvidenceRanges=(version:string)=>protocolForVersion(version)!==undefined;
 /** Both revisions use the immutable v1 segmentation. Their wire decoders remain separate. */

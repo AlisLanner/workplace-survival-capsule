@@ -9,11 +9,12 @@ import v7 from "./versions/ge8-20261016.7.json";
 import v8 from "./versions/ge8-20261016.8.json";
 import v9 from "./versions/ge8-20261016.9.json";
 import v10 from "./versions/ge8-20261016.10.json";
+import v11 from "./versions/ge8-20261016.11.json";
 import { calibration } from "./calibration";
 import type { AgentName } from "../types/agent";
 import type { Definition, DimensionId, Fact } from "./types";
 
-export const VERSION = "ge8-20261016.11";
+export const VERSION = "ge8-20261016.12";
 export const SCHEMA = "ge8/1";
 export const BUNDLE = `${VERSION}/r01`;
 export const PROMPT_NAMES = ["director", "leader", "coworker", "client", "group-discussion", "judge", "behavior-detector", "stage-director"] as const;
@@ -73,7 +74,7 @@ export const definitions: Definition[] = scenarios.map(s => {
     assessment_version:VERSION,schema_version:SCHEMA,scenario_id:s.id,scenario_code:s.code,title:s.title,user_role:s.user,
     dimensions,roles:Object.fromEntries((["leader","coworker","client"] as AgentName[]).map((a,i)=>[a,{name:s.names[i],role:s.roles[i]}])) as Definition["roles"],
     slots,public_facts:facts,role_facts:roleFacts,events,round_policy:{min:8,max:15,max_consecutive_agent_rounds:2},prompt_bundle_version:BUNDLE,
-    scoring_policy:{samples:5,total_variance_limit:80,dimension_range_limit:8,bands:[
+    scoring_policy:{samples:5,total_variance_limit:80,dimension_range_limit:8,evidence_policy:"response-quality/1",bands:[
       "0—5：必要信息和机会充分，仍明确回避行动或有直接不当行为；引用原话。",
       "6—10：有相关态度或零散动作，但关键依据、责任、条件或执行细节不足。",
       "11—15：主要判断动作基本适用，能说明依据与安排，但观察到重要缺口或衔接不足。",
@@ -87,14 +88,14 @@ export const definitions: Definition[] = scenarios.map(s => {
         low:`0—5的明确反向表现样例（必要信息和机会已提供）：\n${render(example.low)}\n${example.distinction}`,
         middle:`中间分档样例：\n${render(example.middle)}\n有相关动作但关键条件、责任或细节显著不足时为6—10；主要动作基本适用且有关键依据，但观察到衔接缺口时为11—15。须依据实际原话选择，不给样例固定分。`,
         high:`16—20的充分表现样例（不是唯一正确答案）：\n${render(example.high)}\n${example.distinction}`,
-        missing:"必要事实未送达、没有机会，或回答仍无法判断两个点时保留null。单纯未提及、冗长空话和技术失败不能转换为0—5；先补中性追问，仍不足则复核。"};
+        missing:"必要事实未送达、没有真实回应机会、计时结束或技术失败时保留null。充分性是能否判断，不是是否达到全部行为要求：已说明行动但遗漏理解检查、负责人或检查节点等，是可评分的表现缺口。明确中性问题后的空泛回应可以依据问题与回应共同评价本次表现，通常只支持6—10；追问后仍明确回避行动或出现直接不当行为才进入0—5。不能按漏提关键词、回答长度或总轮数自动扣分；主动表达的具体行为只要事实先送达也可取证，不要求被直接问到。"};
     })
   };
 });
 
 export function hash(value: unknown): string { return createHash("sha256").update(typeof value === "string" ? value : JSON.stringify(value)).digest("hex"); }
 export function getDefinition(id: string, version=VERSION): Definition {
-  const d=[...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[],...v10 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
+  const d=[...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[],...v10 as Definition[],...v11 as Definition[]].find(x=>x.scenario_id===id && x.assessment_version===version);
   if(!d) throw new Error(`未安装或不支持的测量定义：${id}/${version}`);
   return structuredClone(d);
 }
@@ -110,4 +111,4 @@ export function validateDefinitions(list=definitions) {
     }
   }
 }
-validateDefinitions([...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[],...v10 as Definition[]]);
+validateDefinitions([...definitions,...v2 as Definition[],...v3 as Definition[],...v4 as Definition[],...v5 as Definition[],...v6 as Definition[],...v7 as Definition[],...v8 as Definition[],...v9 as Definition[],...v10 as Definition[],...v11 as Definition[]]);

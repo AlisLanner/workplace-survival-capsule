@@ -95,7 +95,7 @@ export interface Report {
   scenario_id?: string;
   dimension_results?: Array<{
     id:string;name:string;score:number|null;status:"rated"|"not_observed"|"insufficient"|"scoring_failed";analysis:string;
-    slot_results:Array<{slot_id:string;sufficiency:string;valence:string|null;opportunity:Array<{question_message_id:string;fact_ids:string[];round:number}>;evidence:Array<{message_id:string;quote:string;reason:string}>}>;
+    slot_results:Array<{slot_id:string;sufficiency:string;valence:string|null;opportunity:Array<{question_message_id:string;fact_ids:string[];round:number}>;evidence:Array<{message_id:string;quote:string;reason:string;response_context?:{question_message_id:string;answered_opportunities:number}}>}>;
   }>;
   review_reasons?: string[];
   assessment_meta?: Record<string,unknown>;

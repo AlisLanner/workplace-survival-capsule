@@ -1,4 +1,5 @@
 import type { Definition, Evidence, Ge8State, Probe, TranscriptMessage, Opportunity } from "./types";
+import { answeredOpportunities, usesResponseQuality } from "./responseQuality";
 
 export function initialState(d:Definition):Ge8State {
   return {schema_version:d.schema_version,assessment_version:d.assessment_version,scenario_id:d.scenario_id,round:0,min_round:d.round_policy.min,max_round:d.round_policy.max,phase:"assessment",released_facts:{},released_events:{},slots:Object.fromEntries(d.slots.map(s=>[s.slot_id,{opportunities:[],evidence:[]}])),consecutive_agent:0};
@@ -14,7 +15,12 @@ export function locateEvidence(e:Evidence,d:Definition,state:Ge8State,messages:T
   if(!["support","counter","mixed"].includes(e.valence))throw new Error(`valence字段无效：${e.slot_id}；有引文时只能是support、counter或mixed。`);
   if(!e.reason?.trim())throw new Error(`reason不能为空：${e.slot_id}。`);
   if(slot.required_fact_ids.some(f=>{const id=state.released_facts[f];return !id || !messages.slice(0,index).some(m=>m.id===id && m.senderType==="agent");}))throw new Error("必要事实尚未送达该回应前");
-  return {...e,start,end:start+e.quote.length};
+  const result={...e,start,end:start+e.quote.length};delete result.response_context;
+  if(usesResponseQuality(d) && e.sufficiency==="partial") {
+    const links=answeredOpportunities(e.slot_id,d,state,messages),link=links.find(l=>l.response_message_id===e.message_id);
+    if(link)result.response_context={question_message_id:link.question_message_id,answered_opportunities:new Set(links.filter(l=>messages.findIndex(m=>m.id===l.response_message_id)<=index).map(l=>l.response_message_id)).size};
+  }
+  return result;
 }
 export function opportunityFor(slotId:string,state:Ge8State,d:Definition):Opportunity[] {
   const stored=state.slots[slotId]?.opportunities??[];
@@ -45,11 +51,15 @@ export function nextProbe(d:Definition,state:Ge8State,suggestion?:{agent:string;
   if(state.last_agent && state.consecutive_agent>=limit-1 && d.events.some(e=>e.round===state.round+1 && e.agent===state.last_agent && !state.released_events[e.id]))blocked.add(state.last_agent);
   const due=d.events.find(e=>e.round<=state.round && !state.released_events[e.id] && !blocked.has(e.agent));
   const factsReady=(s:Definition["slots"][number])=>s.required_fact_ids.every(f=>state.released_facts[f] || due?.facts.some(x=>x.id===f));
-  const pending=d.slots.filter(s=>factsReady(s) && !state.slots[s.slot_id].evidence.some(e=>e.sufficiency==="sufficient"));
+  const balanced=usesResponseQuality(d);
+  const pending=d.slots.filter(s=>factsReady(s) && (!state.slots[s.slot_id].evidence.some(e=>e.sufficiency==="sufficient") || (balanced && !state.slots[s.slot_id].opportunities.length)));
   pending.sort((a,b)=>Number(state.slots[a.slot_id].opportunities.length>0)-Number(state.slots[b.slot_id].opportunities.length>0) || b.priority-a.priority || a.slot_id.localeCompare(b.slot_id));
   const options=pending.filter(s=>!blocked.has(s.target_agent));
-  const proposed=options.filter(s=>s.target_agent===suggestion?.agent && suggestion.slot_ids.includes(s.slot_id));
-  const agent=due?.agent ?? proposed[0]?.target_agent ?? options[0]?.target_agent ?? (["leader","coworker","client"] as const).find(a=>!blocked.has(a))!;
+  const proposed=balanced?[]:options.filter(s=>s.target_agent===suggestion?.agent && suggestion.slot_ids.includes(s.slot_id));
+  // A Director suggestion must never repeatedly displace a point that has not been asked.
+  const firstPass=options.filter(s=>!state.slots[s.slot_id].opportunities.length);
+  const best=balanced && firstPass.length?firstPass.reduce((a,b)=>firstPass.filter(s=>s.target_agent===a.target_agent).length>=firstPass.filter(s=>s.target_agent===b.target_agent).length?a:b):options[0];
+  const agent=due?.agent ?? proposed[0]?.target_agent ?? best?.target_agent ?? (["leader","coworker","client"] as const).find(a=>!blocked.has(a))!;
   const selected=(!due && proposed.length?proposed:pending.filter(s=>s.target_agent===agent)).slice(0,2);
   return {agent,slot_ids:selected.map(s=>s.slot_id),questions:selected.map(s=>s.probe_intent),facts:[...d.role_facts[agent].filter(f=>!state.released_facts[f.id]),...(due?.facts??[])],event_ids:due?[due.id]:[]};
 }

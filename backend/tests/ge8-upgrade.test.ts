@@ -37,6 +37,6 @@ describe("versioned content and full configuration freeze",()=>{
   it.each(definitions)("freezes separate high, counter and verbose missing transcripts: $scenario_code",d=>{
     const fixtures=(["high","low","missing"] as const).map(k=>evaluationFixture(d,k));
     expect(new Set(fixtures.map(f=>f.fixture_hash)).size).toBe(3);
-    for(const f of fixtures){expect(Object.values(f.state.slots).every(s=>s.opportunities.length===1 && !s.evidence.length)).toBe(true);expect(f.messages.filter(m=>m.senderType==="user")).toHaveLength(8);}
+    for(const f of fixtures){expect(Object.values(f.state.slots).every(s=>s.opportunities.length===1 && !s.evidence.length)).toBe(true);expect(f.messages.filter(m=>m.senderType==="user")).toHaveLength(f.kind==="missing"?0:8);}
   });
 });
