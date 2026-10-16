@@ -23,7 +23,7 @@ export function validateSample(input:unknown,d:Definition,state:Ge8State,message
       const evidence=slot.evidence.map(e=>{if(e.slot_id!==slot.slot_id)throw new Error("证据指向不同观察点");return locateEvidence(e,d,state,messages);});
       if(slot.sufficiency==="sufficient" && !evidence.some(e=>e.sufficiency==="sufficient"))throw new Error("充分观察点必须有可判断原话");
       if(slot.sufficiency==="none" && evidence.length)throw new Error("未观察点不能携带证据");
-      if(evidence.length && slot.valence===null)throw new Error("证据缺少正负方向");
+      if(evidence.length && slot.valence===null)throw new Error(`证据缺少正负方向：${slot.slot_id}有证据时slot_results.valence必须为support/counter/mixed，不可为null`);
       if(evidence.some(e=>e.sufficiency==="none"))throw new Error("不可判断片段不应作为评分证据");
       if(evidence.length && ((slot.valence==="support" && evidence.every(e=>e.valence==="counter")) || (slot.valence==="counter" && evidence.every(e=>e.valence==="support"))))throw new Error("观察点方向与引用反向矛盾");
       const opportunity=evidence.length?opportunityFor(slot.slot_id,state,d):(state.slots[slot.slot_id]?.opportunities??[]);

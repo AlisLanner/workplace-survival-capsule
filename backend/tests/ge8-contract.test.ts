@@ -70,7 +70,7 @@ describe("strict scoring and missing semantics",()=>{
     (s:any)=>s.dimension_results.pop(),(s:any)=>s.dimension_results.push(s.dimension_results[0]),(s:any)=>s.dimension_results[1]=s.dimension_results[0],
     (s:any)=>s.dimension_results[0].name="信息辨别",(s:any)=>s.dimension_results[0].score=21,(s:any)=>s.dimension_results[0].score=-1,(s:any)=>s.dimension_results[0].score=Infinity,(s:any)=>s.dimension_results[0].score=1.5,
     (s:any)=>s.dimension_results[0].score=null,(s:any)=>s.dimension_results[0].status="insufficient",(s:any)=>s.dimension_results[0].slot_results[0].evidence[0].quote="伪造",
-    (s:any)=>s.dimension_results[0].slot_results[1]=s.dimension_results[0].slot_results[0]
+    (s:any)=>s.dimension_results[0].slot_results[1]=s.dimension_results[0].slot_results[0],(s:any)=>s.dimension_results[0].slot_results[0].valence=null
   ])("rejects illegal scores, missing/extra/duplicate dimensions and fabricated quotes",mutate=>{const f=fixture();mutate(f.sample);expect(()=>validateSample(f.sample,f.d,f.state,f.messages)).toThrow();});
   it("trims each dimension independently then rounds integers and sums",()=>{
     const f=fixture();const samples=[10,12,13,14,16].map(score=>{const s=structuredClone(f.sample);s.dimension_results.forEach(d=>d.score=score);return s;});

@@ -21,7 +21,19 @@ async function freeze(){
    direction_rule:'high and low: all eight rated; high mean >=11, low mean <=8; paired high mean exceeds low by >=4; missing: all scores null; no exact score targets.'};
  bank.bank_hash=hash(bank);write('frozen-bank',bank);return bank;
 }
-async function summary(){const calls=await prisma.assessmentCallAudit.findMany();const tokens={prompt_tokens:0,completion_tokens:0,total_tokens:0};let unknown=0;for(const c of calls){const u=c.usageJson?JSON.parse(c.usageJson):null;if(!u||typeof u!=='object'){unknown++;continue;}for(const k of Object.keys(tokens))if(typeof u[k]==='number')tokens[k]+=u[k];}write('usage',{requests:calls.length,api_errors:calls.filter(c=>c.error).length,unknown_usage_requests:unknown,tokens,cost:'Unknown: no verified unit pricing assumed',by_kind:calls.reduce((x,c)=>(x[c.kind]=(x[c.kind]||0)+1,x),{})});}
+async function summary(){
+ const calls=await prisma.assessmentCallAudit.findMany({orderBy:[{createdAt:'asc'},{id:'asc'}]});
+ const tokens={prompt_tokens:0,completion_tokens:0,total_tokens:0};let unknown=0,repairs=0;const first=new Map();
+ for(const c of calls){
+  const key=c.runId+':'+c.kind.replace(/^(judge\/\d+)\/\d+$/,'$1');if(first.has(key))repairs++;else first.set(key,c);
+  const u=c.usageJson?JSON.parse(c.usageJson):null;if(!u||typeof u!=='object'){unknown++;continue;}
+  for(const k of Object.keys(tokens))if(typeof u[k]==='number')tokens[k]+=u[k];
+ }
+ const initial=[...first.values()];
+ write('usage',{requests:calls.length,request_failures:calls.filter(c=>c.error).length,http_or_transport_failures:calls.filter(c=>c.error&&!c.responseJson).length,validation_failures:calls.filter(c=>c.error&&c.responseJson).length,
+  repair_requests:repairs,first_answer_groups:initial.length,valid_first_answers:initial.filter(c=>!c.error).length,first_answer_valid_rate:initial.length?initial.filter(c=>!c.error).length/initial.length:null,
+  unknown_usage_requests:unknown,tokens,cost:'Unknown: no verified unit pricing assumed',by_kind:calls.reduce((x,c)=>(x[c.kind]=(x[c.kind]||0)+1,x),{})});
+}
 async function main(){
  await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;const bank=await freeze();
  if(phase==='probes')for(const d of definitions){const name='probe-'+d.scenario_code;const prior=read(name);if(prior){if(prior.state!=='completed')throw Error('Review interrupted probe: '+name);continue;}const start=await api('assessment/start',{scenario_id:d.scenario_id,nickname:'真实链路探测（合成）'});write(name,{state:'started',session_id:start.session_id});const result=await api('assessment/message',{session_id:start.session_id,content:calibration[d.scenario_code][0].high.join('\n')});assert.equal(result.reply.speaker,d.roles[JSON.parse((await prisma.assessmentSession.findUnique({where:{id:start.session_id}})).blackboardState).last_agent].name);assert.equal(await prisma.agentTraceEvent.count({where:{sessionId:start.session_id,nodeId:'npcSafeProbe'}}),0,'Review role failures before running the full batch');write(name,{state:'completed',session_id:start.session_id,result});console.log('PROBE_OK='+d.scenario_code);}
