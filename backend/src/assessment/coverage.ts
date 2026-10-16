@@ -34,14 +34,15 @@ export function coverage(d:Definition,state:Ge8State) {
   return {covered_dimensions:covered,insufficient_dimensions:d.dimensions.filter(x=>!covered.includes(x.name)).map(x=>x.name),complete:covered.length===8};
 }
 /** Deterministic facts and deadlines; models may never invent events or expand authority. */
-export function nextProbe(d:Definition,state:Ge8State):Probe {
+export function nextProbe(d:Definition,state:Ge8State,suggestion?:{agent:string;slot_ids:string[]}):Probe {
   const due=d.events.find(e=>e.round<=state.round && !state.released_events[e.id]);
   const factsReady=(s:Definition["slots"][number])=>s.required_fact_ids.every(f=>state.released_facts[f] || due?.facts.some(x=>x.id===f));
   const pending=d.slots.filter(s=>factsReady(s) && !state.slots[s.slot_id].evidence.some(e=>e.sufficiency==="sufficient"));
   pending.sort((a,b)=>Number(state.slots[a.slot_id].opportunities.length>0)-Number(state.slots[b.slot_id].opportunities.length>0) || b.priority-a.priority || a.slot_id.localeCompare(b.slot_id));
   const options=pending.filter(s=>!(state.last_agent===s.target_agent && state.consecutive_agent>=2));
-  const agent=due?.agent ?? (options[0]??pending[0])?.target_agent ?? (state.last_agent==="leader"?"coworker":"leader");
-  const selected=pending.filter(s=>s.target_agent===agent).slice(0,2);
+  const proposed=options.filter(s=>s.target_agent===suggestion?.agent && suggestion.slot_ids.includes(s.slot_id));
+  const agent=due?.agent ?? proposed[0]?.target_agent ?? (options[0]??pending[0])?.target_agent ?? (state.last_agent==="leader"?"coworker":"leader");
+  const selected=(!due && proposed.length?proposed:pending.filter(s=>s.target_agent===agent)).slice(0,2);
   return {agent,slot_ids:selected.map(s=>s.slot_id),questions:selected.map(s=>s.probe_intent),facts:[...d.role_facts[agent].filter(f=>!state.released_facts[f.id]),...(due?.facts??[])],event_ids:due?[due.id]:[]};
 }
 export function delivered(probe:Probe,messageId:string,round:number,state:Ge8State,d:Definition) {

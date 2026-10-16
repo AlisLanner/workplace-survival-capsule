@@ -1,0 +1,2 @@
+CREATE TABLE "AssessmentCallAudit" ("id" TEXT NOT NULL PRIMARY KEY,"sessionId" TEXT NOT NULL,"runId" TEXT NOT NULL,"kind" TEXT NOT NULL,"assessmentVersion" TEXT NOT NULL,"requestHash" TEXT NOT NULL,"requestJson" TEXT NOT NULL,"responseJson" TEXT,"error" TEXT,"usageJson" TEXT,"createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX "AssessmentCallAudit_sessionId_createdAt_idx" ON "AssessmentCallAudit"("sessionId","createdAt");

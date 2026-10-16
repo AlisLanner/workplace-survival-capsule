@@ -84,6 +84,7 @@ const firstWeekTaskCard = `你入职运营组第一周，主管把跨部门需�
 const scenarioEDesc = "入职第一周接到跨部门需求,权限不全、口径不明、排期被拒。你需要在不熟的环境里守住边界、拿到数据支持、如期交付。";
 
 async function main() {
+  if(await prisma.scenario.count() || await prisma.promptTemplate.count() || await prisma.assessmentSession.count())throw new Error("现有库包含内容，seed仅供空库初始化。请先备份，再使用定向版本安装器。");
   await prisma.scenario.upsert({
     where: { id: "project_demo_crisis" },
     create: {

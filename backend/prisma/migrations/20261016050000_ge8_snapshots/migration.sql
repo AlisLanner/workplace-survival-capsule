@@ -1,0 +1,10 @@
+ALTER TABLE "Scenario" ADD COLUMN "assessmentVersion" TEXT;
+ALTER TABLE "Scenario" ADD COLUMN "assessmentDefinitionJson" TEXT;
+ALTER TABLE "AssessmentSession" ADD COLUMN "assessmentVersion" TEXT;
+ALTER TABLE "AssessmentSession" ADD COLUMN "assessmentSnapshotJson" TEXT;
+ALTER TABLE "AssessmentSession" ADD COLUMN "scoringRunId" TEXT;
+ALTER TABLE "AssessmentSession" ADD COLUMN "scoringAttempts" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "AssessmentSession" ADD COLUMN "turnLockId" TEXT;
+ALTER TABLE "AssessmentSession" ADD COLUMN "turnLockedAt" DATETIME;
+CREATE TABLE "AssessmentInstallation" ("id" TEXT NOT NULL PRIMARY KEY, "manifestJson" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "PromptBundle" ("id" TEXT NOT NULL PRIMARY KEY, "keysJson" TEXT NOT NULL, "active" BOOLEAN NOT NULL DEFAULT true, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);

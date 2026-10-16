@@ -12,6 +12,10 @@ type CallDeepSeekParams = {
   thinking?: boolean;
   timeoutMs?: number;
   allowMockFallback?: boolean;
+  baseUrl?: string;
+  maxAttempts?: number;
+  onUsage?: (usage:Record<string,unknown>|null)=>void;
+  mockMode?: boolean;
 };
 
 type StreamCallback = (token: string) => void;
@@ -88,7 +92,7 @@ async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<st
       inputChars: params.userPrompt.length
     });
 
-    const baseUrl = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
+    const baseUrl = params.baseUrl || process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
@@ -106,7 +110,9 @@ async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<st
 
     const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string; reasoning_content?: string } }>;
+      usage?: Record<string, unknown>;
     };
+    params.onUsage(data.usage??null);
     // deepseek-v4-flash 等思考模型可能把内容放在 reasoning_content、content 为空，
     // 此时退化用 reasoning_content 提取（下游 safeParseJSON 会抓取最外层 JSON）。
     const content =
@@ -120,6 +126,7 @@ async function requestDeepSeek(params: Required<CallDeepSeekParams>): Promise<st
       model: params.model,
       durationMs: Date.now() - startedAt,
       outputChars: content.length
+      ,usage: data.usage ?? "unknown"
     });
 
     return content;
@@ -137,14 +144,18 @@ export async function callDeepSeek({
   jsonMode = true,
   thinking = false,
   timeoutMs = 90000,
-  allowMockFallback = true
+  allowMockFallback = true,
+  baseUrl = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
+  maxAttempts = 2,
+  onUsage = ()=>{},
+  mockMode = process.env.USE_MOCK_LLM === "true"
 }: CallDeepSeekParams): Promise<string> {
   const selectedModel =
     model ||
     (thinking
       ? process.env.DEEPSEEK_STRONG_MODEL || process.env.DEEPSEEK_FAST_MODEL || "deepseek-v4-flash"
       : process.env.DEEPSEEK_FAST_MODEL || "deepseek-v4-flash");
-  const useExplicitMock = process.env.USE_MOCK_LLM === "true";
+  const useExplicitMock = mockMode;
   const hasApiKey = Boolean(process.env.DEEPSEEK_API_KEY);
   // 用户已明确配置 API key（要真实 LLM）时，禁用 mock 降级——失败直接抛错，不静默转 mock。
   // 仅在显式开启 mock，或完全未配置 key 且允许降级（教学演示）时才走 mock。
@@ -166,12 +177,17 @@ export async function callDeepSeek({
     jsonMode,
     thinking,
     timeoutMs,
-    allowMockFallback
+    allowMockFallback,
+    baseUrl,
+    maxAttempts,
+    onUsage,
+    mockMode
   };
 
   try {
     return await requestDeepSeek(normalizedParams);
   } catch (error) {
+    if (maxAttempts <= 1) throw error;
     log("warn", "DeepSeek call failed; retrying once", { error });
     try {
       return await requestDeepSeek(normalizedParams);

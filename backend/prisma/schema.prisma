@@ -26,6 +26,8 @@ model Scenario {
   groupChatEnabled  Boolean  @default(true)
   groupChatRounds   String   @default("[3,6]")
   status            String   @default("active")
+  assessmentVersion String?
+  assessmentDefinitionJson String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -55,6 +57,12 @@ model AssessmentSession {
   groupChatSummary String?
   startedAt        DateTime  @default(now())
   endedAt          DateTime?
+  assessmentVersion String?
+  assessmentSnapshotJson String?
+  scoringRunId String?
+  scoringAttempts Int @default(0)
+  turnLockId String?
+  turnLockedAt DateTime?
 
   user             User?     @relation(fields: [userId], references: [id])
   scenario         Scenario  @relation(fields: [scenarioId], references: [id])
@@ -65,6 +73,34 @@ model AssessmentSession {
   @@index([scenarioId])
   @@index([userId])
   @@index([status])
+}
+
+model AssessmentInstallation {
+  id String @id
+  manifestJson String
+  createdAt DateTime @default(now())
+}
+
+model PromptBundle {
+  id String @id
+  keysJson String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+
+model AssessmentCallAudit {
+  id String @id @default(cuid())
+  sessionId String
+  runId String
+  kind String
+  assessmentVersion String
+  requestHash String
+  requestJson String
+  responseJson String?
+  error String?
+  usageJson String?
+  createdAt DateTime @default(now())
+  @@index([sessionId, createdAt])
 }
 
 model Message {

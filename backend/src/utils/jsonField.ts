@@ -21,7 +21,7 @@ export function normalizeScenario<
     initialBlackboardJson?: string | null;
   }
 >(scenario: T) {
-  const { openingMessageJson, initialBlackboardJson: _initialBlackboardJson, ...publicScenario } = scenario;
+  const { openingMessageJson, initialBlackboardJson: _initialBlackboardJson, assessmentDefinitionJson: _definition, ...publicScenario } = scenario as T & { assessmentDefinitionJson?:string|null };
 
   return {
     ...publicScenario,
@@ -37,9 +37,12 @@ export function normalizeSession<
     groupChatSummary?: string | null;
   }
 >(session: T) {
+  const { assessmentSnapshotJson: _snapshot, scenario: _scenario, groupDiscussions: _discussions, agentTraceEvents: _traces, ...publicSession } = session as T & {assessmentSnapshotJson?:string|null;scenario?:unknown;groupDiscussions?:unknown;agentTraceEvents?:unknown;assessmentVersion?:string|null};
+  const board=parseJsonField<Record<string, unknown>>(session.blackboardState, {});
+  const publicBoard=publicSession.assessmentVersion ? Object.fromEntries(["schema_version","assessment_version","scenario_id","round","min_round","max_round","phase"].map(k=>[k,board[k]])) : board;
   return {
-    ...session,
-    blackboardState: parseJsonField<Record<string, unknown>>(session.blackboardState, {}),
+    ...publicSession,
+    blackboardState: publicBoard,
     reportJson: parseJsonField<Record<string, unknown> | null>(session.reportJson, null),
     groupChatSummary: parseJsonField<Record<string, unknown> | null>(session.groupChatSummary, null)
   };

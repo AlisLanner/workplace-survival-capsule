@@ -3,7 +3,7 @@ import observations from "./observations.json";
 import type { AgentName } from "../types/agent";
 import type { Definition, DimensionId, Fact } from "./types";
 
-export const VERSION = "ge8-20261016.1";
+export const VERSION = "ge8-20261016.2";
 export const SCHEMA = "ge8/1";
 export const BUNDLE = `${VERSION}/r01`;
 export const PROMPT_NAMES = ["director", "leader", "coworker", "client", "group-discussion", "judge", "behavior-detector", "stage-director"] as const;
@@ -27,8 +27,8 @@ const scenarios = [
     limit: "小秋补充：目前工具只能复用已有素材，不能制作新的专业设计成品。", limitAgent: "client" },
   { code: "B", id: "coffee_shop_complaint", title: "8号桌的客人", user: "餐厅值班经理",
     names: ["刘总", "小林", "江师傅"], roles: ["8号桌客人", "后厨学徒", "后厨主管"],
-    facts: ["8号桌第二道菜出品发生问题，菜已撤下；事故具体原因尚未确认。", "新出品必须由江师傅复核。值班经理可提出每桌不超过100元等值补救；超出或整单减免须上级确认。这是模拟门店权限。", "替换出品预计15分钟；当班最多协调1名服务员10分钟，仍需兼顾其他桌。", "基本目标是安全处理眼前问题；可争取恢复客人对后续服务的信任。等待、补救资源和其他桌服务构成取舍条件，补偿多不等于能力高。"],
-    private: ["刘总说明：用餐最多再等30分钟，仍对现场影响和处理安排有疑问。", "小林不确定事故的完整经过，可补充本人操作；不应被要求承担全部责任。", "江师傅只能使用当前当班人员，不能额外加人；出品复核不可省略。"],
+    facts: ["8号桌第二道菜出品发生问题，菜已撤下；事故具体原因尚未确认。", "新出品必须由江师傅复核。值班经理可提出每桌不超过100元等值补救；超出或整单减免须上级确认。这是模拟门店权限。", "替换出品预计15分钟；当班最多协调1名服务员10分钟，仍需兼顾其他桌。", "基本目标是安全处理眼前问题；可争取恢复客人对后续服务的信任。等待、补救资源和其他桌服务是已知约束。"],
+    private: ["刘总说明：用餐最多再等30分钟，仍对现场影响和处理安排有疑问。", "小林只掌握本人操作；其他环节仍需相关人员核对。", "江师傅只能使用当前当班人员，不能额外加人；出品复核不可省略。"],
     change: "江师傅确认后厨临时增加10分钟等待，替换出品现在预计25分钟。", changeAgent: "client",
     limit: "江师傅补充：现有人员不增加，出品检查须在现有交接流程中完成。", limitAgent: "client" },
   { code: "C", id: "promo_outage_crisis", title: "零点大促的故障工单", user: "值班负责人",

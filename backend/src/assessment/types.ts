@@ -47,6 +47,7 @@ export interface ModelConfig {
 }
 export interface Snapshot {
   schema_version: string; definition: Definition; definition_hash: string; code_sha: string;
+  code_dirty?:boolean;
   prompts: Record<string, { key: string; content: string; hash: string }>;
   prompt_bundle_hash: string; model: ModelConfig;
 }
