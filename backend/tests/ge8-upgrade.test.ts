@@ -3,9 +3,11 @@ import {definitions,getDefinition,hash} from "../src/assessment/definitions";
 import {delivered,initialState,nextProbe} from "../src/assessment/coverage";
 import {frozenScenario,modelConfig,readSnapshot,sealSnapshot} from "../src/assessment/runtime";
 import {evaluationFixture} from "../src/assessment/evaluation";
+import {canonicalPrompt} from "../src/assessment/install";
 
 describe("versioned content and full configuration freeze",()=>{
   afterEach(()=>vi.unstubAllEnvs());
+  it("installs identical template hashes from Windows and LF checkouts",()=>{expect(hash(canonicalPrompt("角色\r\n问题\r\n"))).toBe(hash(canonicalPrompt("角色\n问题\n")));});
   it.each(definitions)("rotates roles through fixed events and exhausted slots: $scenario_code",d=>{
     for(const exhausted of [false,true]){
       const state=initialState(d);

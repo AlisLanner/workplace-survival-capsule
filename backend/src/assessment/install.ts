@@ -8,6 +8,7 @@ import fingerprints from "./legacy-fingerprints.json";
 
 const fields=["title","description","backgroundForUser","openingMessageJson","initialBlackboardJson","maxRound","groupChatEnabled","groupChatRounds","status"] as const;
 export const installationId=`${VERSION}/install-1`;
+export function canonicalPrompt(text:string){return text.replace(/\r\n/g,"\n");}
 export function definitionConfig(d:Definition) {
   return {title:d.title,description:`${d.scenario_code} · 统一八维 · ${d.user_role}`,backgroundForUser:[`你是${d.user_role}。`,...d.public_facts.map(f=>f.text),"这是模拟任务设定，请说明你的判断及理由。"].join("\n\n"),assessmentVersion:d.assessment_version,assessmentDefinitionJson:JSON.stringify(d),maxRound:d.round_policy.max};
 }
@@ -21,7 +22,7 @@ async function compatible(tx:Prisma.TransactionClient,row:Scenario|null) {
   return true;
 }
 export async function installGe8(apply=false) {
-  const templates=PROMPT_NAMES.map(name=>({key:`${BUNDLE}/${name}`,name:`${name} ${BUNDLE}`,content:fs.readFileSync(path.resolve(__dirname,`../prompts/ge8/${name}.prompt.txt`),"utf8")}));
+  const templates=PROMPT_NAMES.map(name=>({key:`${BUNDLE}/${name}`,name:`${name} ${BUNDLE}`,content:canonicalPrompt(fs.readFileSync(path.resolve(__dirname,`../prompts/ge8/${name}.prompt.txt`),"utf8"))}));
   const manifest={installation_id:installationId,definition_hash:hash(definitions),templates:templates.map(t=>({key:t.key,hash:hash(t.content)})),scenarios:definitions.map(d=>({id:d.scenario_id,version:d.assessment_version,hash:hash(d)}))};
   const existing=await prisma.assessmentInstallation.findUnique({where:{id:installationId}});
   if(existing){
