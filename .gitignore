@@ -30,7 +30,7 @@ portable-release/app/*
 !portable-release/START_NO_BROWSER.bat
 !portable-release/README.txt
 docs/competition-editing/
-��������_�ڰ˽��˹����ܴ��´���/
+参赛材料_第八届人工智能创新大赛/
 
 # Machine-specific settings and local assessment data
 .env.*
