@@ -30,4 +30,14 @@ portable-release/app/*
 !portable-release/START_NO_BROWSER.bat
 !portable-release/README.txt
 docs/competition-editing/
-参赛材料_第八届人工智能创新大赛/
+��������_�ڰ˽��˹����ܴ��´���/
+
+# Machine-specific settings and local assessment data
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+logs/
+.local-data/
