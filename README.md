@@ -58,7 +58,7 @@ workplace-survival-capsule/
 
 ### Windows 便携版
 
-最新便携压缩包在 [GitHub Releases](https://github.com/xianghaoyu2001/workplace-survival-capsule/releases/latest) 下载。解压后双击 `START.bat`，无需安装 Node.js。默认使用离线 mock，API key 为空，管理密钥在每次启动时临时生成。发布包只包含五个默认场景和八个提示词，不包含本机测评数据。
+新版统一八维程序的安装包应从 **[本仓库 Releases](https://github.com/AlisLanner/workplace-survival-capsule/releases)** 的发布附件下载；不要从原作者的旧版 Releases 下载后当作本项目新版。若本仓库尚未出现附件，表示新版便携包尚未公开发布，请向维护者获取已制作的 2026-10-25 统一八维 Windows 包。可直接运行的包应含 `runtime/node.exe`、`app/` 和“启动程序.cmd”；GitHub 的 **Code → Download ZIP** 以及 Release 页的 **Source code** 都是源码，需要自行构建。
 
 源码包含便携启动器和 `scripts/build-portable.cjs`。重新打包前先运行下方构建与测试命令，并将 Windows Node.js 运行时放入 `portable-release/runtime/node.exe`（该二进制不提交到 Git）。执行：
 
