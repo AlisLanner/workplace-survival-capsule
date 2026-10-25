@@ -52,7 +52,7 @@ workplace-survival-capsule/
 
 ### Windows 便携版
 
-新版统一八维程序的安装包应从 **[本仓库 Releases](https://github.com/AlisLanner/workplace-survival-capsule/releases)** 的发布附件下载；不要从原作者的旧版 Releases 下载后当作本项目新版。若本仓库尚未出现附件，表示新版便携包尚未公开发布，请向维护者获取已制作的 2026-10-25 统一八维 Windows 包。可直接运行的包应含 `runtime/node.exe`、`app/` 和“启动程序.cmd”；GitHub 的 **Code → Download ZIP** 以及 Release 页的 **Source code** 都是源码，需要自行构建。
+最新版 **[统一八维 v12 Windows 便携版（2026-10-25）](https://github.com/AlisLanner/workplace-survival-capsule/releases/tag/v2026.10.25-ge8.12)** 已发布。**[直接下载完整程序包](https://github.com/AlisLanner/workplace-survival-capsule/releases/download/v2026.10.25-ge8.12/MAAT-Windows-x64-ge8-20261016.12.zip)**（约157 MB），完整解压后双击“启动程序.cmd”，无需另装 Node.js 或 npm；[校验文件](https://github.com/AlisLanner/workplace-survival-capsule/releases/download/v2026.10.25-ge8.12/SHA256SUMS.txt)。包内默认离线模拟，真实测评须在 `app/config.env` 配置自己的 API 密钥并关闭 mock。A/B/C/E 为统一八维新版，D 保留旧版演示；包内数据库为空白，不含维护者的密钥、作答记录或日志。GitHub 的 **Code → Download ZIP** 以及 Release 页的 **Source code** 都是源码，需要自行构建。
 
 源码包含便携启动器和 `scripts/build-portable.cjs`。重新打包前先运行下方构建与测试命令，并将 Windows Node.js 运行时放入 `portable-release/runtime/node.exe`（该二进制不提交到 Git）。执行：
 
