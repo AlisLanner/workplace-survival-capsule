@@ -94,7 +94,7 @@ export function ReportView({ sessionId, embedded = false }: { sessionId: string;
           {slot.evidence.map((item, i) => <blockquote key={`${item.message_id}-${i}`} className="mt-2.5 rounded-lg border-l-2 border-sky-100/20 bg-white/[.02] px-4 py-3">
             <Quote className="mb-1.5 size-3 text-slate-600" />
             <p className="text-[13px] leading-[1.9] text-slate-300">“{item.quote}”</p>
-            <p className="mt-1.5 text-[11px] leading-5 text-slate-600">{item.reason}</p>
+            <p className="mt-1.5 text-[12px] leading-6 text-slate-400">{item.reason}</p>
             {item.response_context ? <p className="mt-1 text-[11px] leading-5 text-slate-700">结合明确的提问回应判断；此前已完成 {item.response_context.answered_opportunities} 次相关提问与回应。</p> : null}
           </blockquote>)}
           {!slot.evidence.length ? <p className="mt-2 text-[11px] text-slate-700">无可定位原话，保留缺失。</p> : null}
