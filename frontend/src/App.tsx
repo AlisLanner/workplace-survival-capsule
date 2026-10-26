@@ -31,7 +31,7 @@ export function App() {
         <div className="wrap nav-inner">
           <NavLink to="/" className="brand">
             <span className="seal">MA</span>
-            <span>MAAT · 情境行为评估系统</span>
+            <span>MACST · 情境行为评估系统</span>
           </NavLink>
           <div className="nav-links">
             <NavLink to="/" end>

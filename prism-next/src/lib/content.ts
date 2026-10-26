@@ -16,4 +16,4 @@ export const domains = [
   {name:"进取与绩效",description:"提出与职责相称的提升目标，权衡工作价值、投入与成本。",tone:"#ed9be7"},
 ] as const;
 export const navigation = [{href:"/scenarios",label:"测评情境",chapter:"01"},{href:"/framework",label:"能力框架",chapter:"02"},{href:"/process",label:"评估流程",chapter:"03"},{href:"/about",label:"关于项目",chapter:"04"}] as const;
-export const siteDescription="MAAT多智能体岗位胜任力情境测验：通过岗位情境、多角色互动与可追溯的行为证据，理解个体能力的不同侧面。";
+export const siteDescription="MACST（Multi-agent Competency Situational Test）多智能体岗位胜任力情境测验：通过岗位情境、多角色互动与可追溯的行为证据，理解个体能力的不同侧面。";

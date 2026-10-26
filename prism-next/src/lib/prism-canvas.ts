@@ -22,7 +22,7 @@ export function createPrismCanvas(hero:HTMLDivElement,visual:HTMLDivElement,canv
     texture.width=Math.ceil(width*2+fontSize*8);texture.height=Math.ceil(fontSize*1.55);
     tx.font=`500 ${fontSize}px Arial, sans-serif`;
     tx.textBaseline='middle';tx.fillStyle='#f3f3f3';
-    const letters='MAAT';const letterGap=fontSize*.065;
+    const letters='MACST';const letterGap=fontSize*.065;
     const measure=Array.from(letters).reduce((sum,char)=>sum+tx.measureText(char).width+letterGap,0);
     wordStep=measure+fontSize*.43;
     for(let x=-wordStep;x<texture.width;x+=wordStep){let lx=x;for(const char of letters){tx.fillText(char,lx,texture.height*.50);lx+=tx.measureText(char).width+letterGap;}}

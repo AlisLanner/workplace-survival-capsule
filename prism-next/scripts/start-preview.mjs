@@ -42,8 +42,8 @@ try {
   await ensureService(17926, "scripts/start.mjs", "next");
   await ensureService(17925, "scripts/start-compat.mjs", "bookmark");
   const response = await fetch("http://127.0.0.1:17926/", { signal: AbortSignal.timeout(15000) });
-  if (!response.ok || !(await response.text()).includes("MAAT")) throw new Error("Preview validation failed.");
-  console.log("MAAT ready: http://127.0.0.1:17926/");
+  if (!response.ok || !(await response.text()).includes("MACST")) throw new Error("Preview validation failed.");
+  console.log("MACST ready: http://127.0.0.1:17926/");
   console.log("Old bookmark: http://127.0.0.1:17925/ -> current preview");
   if (!noOpen) execFile("rundll32.exe", ["url.dll,FileProtocolHandler", "http://127.0.0.1:17926/"], { windowsHide: true }, error => {
     if (error) console.log("Open http://127.0.0.1:17926/ in your browser.");

@@ -15,4 +15,4 @@ const server = createServer((request, response) => {
   response.end();
 });
 server.on("error", error => { console.error(error.message); process.exitCode = 1; });
-server.listen(17925, "127.0.0.1", () => console.log("MAAT preview bookmark: http://127.0.0.1:17925/ -> http://127.0.0.1:17926/"));
+server.listen(17925, "127.0.0.1", () => console.log("MACST preview bookmark: http://127.0.0.1:17925/ -> http://127.0.0.1:17926/"));

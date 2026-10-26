@@ -38,7 +38,7 @@ PROJECT_ROOT = Path(r"D:\job_project\workplace-survival-capsule")
 OUTPUT_DIR = PROJECT_ROOT / "参赛材料_第八届人工智能创新大赛"
 WORK_DIR = PROJECT_ROOT / ".codex-work" / "submission-build"
 TEAM = "三个诸葛亮"
-PROJECT = "MAAT多智能体岗位胜任力情境测验"
+PROJECT = "MACST多智能体岗位胜任力情境测验"
 SAFE_PREFIX = f"{TEAM}_{PROJECT}"
 
 # ReportLab's bundled TTFont reader does not support the PostScript outlines in
@@ -285,7 +285,7 @@ def project_story():
     s = []
     s += [P("1 项目概况", "H1CN"),
           P("1.1 背景和基础", "H2CN"),
-          P("传统岗位胜任力测评常把复杂、情境化的行为压缩成自陈量表、一次性选择题或结构化问答。它们在成本、标准化和大样本统计上成熟，但难以连续观察被测者如何澄清信息、分解交付、处理冲突、设定边界并在压力下复盘。MAAT将情境测验从“题目—答案”扩展为“情境刺激—多轮行为—证据槽位—多视角评分—可追溯反馈”的过程。项目定位是研究与培训场景中的行为观察和反馈原型，不作为单一的招聘、晋升、解聘或惩罚依据。", "BodyCN"),
+          P("传统岗位胜任力测评常把复杂、情境化的行为压缩成自陈量表、一次性选择题或结构化问答。它们在成本、标准化和大样本统计上成熟，但难以连续观察被测者如何澄清信息、分解交付、处理冲突、设定边界并在压力下复盘。MACST将情境测验从“题目—答案”扩展为“情境刺激—多轮行为—证据槽位—多视角评分—可追溯反馈”的过程。项目定位是研究与培训场景中的行为观察和反馈原型，不作为单一的招聘、晋升、解聘或惩罚依据。", "BodyCN"),
           P("项目以Evidence-Centered Design（ECD）为测量蓝图，将能力主张、任务特征和可观察证据对齐；以LangGraph状态图实现可恢复的多智能体流程；以SQLite保存会话、消息和AgentTraceEvent；以DeepSeek兼容接口完成真实模型推理，并保留显式Mock模式供无Key、离线或课堂演示使用。[1][2][3]", "BodyCN"),
           callout("核心判断：本作品的创新不在于声称发明了LLM、Multi-Agent或某一种统计量，而在于将测量学蓝图、动态探测、角色信息隔离、证据追踪和不确定性闸门组成一套可审计的职场情境推理流程，并用研究报告指标验证其可行性。", "blue"),
           P("1.2 场景和价值", "H2CN"),
@@ -402,7 +402,7 @@ def build_project_pdf(path: Path):
 
 
 def build_intro_pdf(path: Path):
-    intro = ("MAAT是基于LLM Multi-Agent的情境能力评估系统。项目以ECD为蓝图，将5类情境拆成8项行为维度和16个证据槽位，由Director动态追问、角色Agent提供受限视角、Judge五次评分，以修剪均值和方差闸门控制分歧。参考研究N=50：编码ICC=.82、Kappa=.79，7日重测总分r=.81，Judge维度SD均值=.134，与SJT总分r=.54；44项测试通过，支持API与Mock便携运行。创新在于将测量蓝图、动态探测、信息隔离、证据链和人工复核组合为可审计流程，而非把LLM当作单一评分器。用于教学、培训和测量研究，不作为单一人事决策依据。")
+    intro = ("MACST是基于LLM Multi-Agent的情境能力评估系统。项目以ECD为蓝图，将5类情境拆成8项行为维度和16个证据槽位，由Director动态追问、角色Agent提供受限视角、Judge五次评分，以修剪均值和方差闸门控制分歧。参考研究N=50：编码ICC=.82、Kappa=.79，7日重测总分r=.81，Judge维度SD均值=.134，与SJT总分r=.54；44项测试通过，支持API与Mock便携运行。创新在于将测量蓝图、动态探测、信息隔离、证据链和人工复核组合为可审计流程，而非把LLM当作单一评分器。用于教学、培训和测量研究，不作为单一人事决策依据。")
     if len(intro) > 300:
         raise ValueError(f"简介超过300字：{len(intro)}")
     doc = CNDocTemplate(str(path), pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm,
@@ -433,12 +433,12 @@ def build_technical_pdf(path: Path):
               ["Assessment Center", "多练习、多评分者", "行为观察密度高", "组织成本、人员成本和周期较高"],
               ["LLM生成SJT", "模型生成题干/选项", "扩展题库快、覆盖领域广", "生成质量与心理测量质量不自动等价；需专家与样本验证"],
               ["LLM-as-a-Judge", "模型读文本后直接给分", "低成本、可处理开放文本", "位置、长度、自我增强和模型偏好等偏差；单次分数缺少不确定性"],
-              ["MAAT", "动态多角色自然语言对话 + 槽位证据", "覆盖控制、角色隔离、证据链、5样本分歧闸门、可本地降级", "仍受LLM偏差、样本量和场景迁移影响；需要更多外部验证"],
+              ["MACST", "动态多角色自然语言对话 + 槽位证据", "覆盖控制、角色隔离、证据链、5样本分歧闸门、可本地降级", "仍受LLM偏差、样本量和场景迁移影响；需要更多外部验证"],
           ], [32 * mm, 43 * mm, 48 * mm, 47 * mm]),
           P("2 与已有LLM相关工作的差异", "H1CN"),
-          P("Krumm等研究说明，ChatGPT可以快速生成SJT，但自动生成的测验仍需以模型拟合、信度、聚合效度和区分效度检验；因此MAAT把生成/配置与施测、证据收集和验证分开，不把“模型写出了题目”当作测量成立。Zheng等对LLM-as-a-Judge的研究提醒，评委可能受回答位置、长度和自我增强等因素影响；MAAT的5样本聚合和方差闸门只能降低一次性随机性，不能声称消除系统性偏差。LangGraph官方定位是长时、状态化Agent的编排运行时；本项目在其上增加测量蓝图和AgentView约束，这部分是任务层工程设计。", "BodyCN"),
+          P("Krumm等研究说明，ChatGPT可以快速生成SJT，但自动生成的测验仍需以模型拟合、信度、聚合效度和区分效度检验；因此MACST把生成/配置与施测、证据收集和验证分开，不把“模型写出了题目”当作测量成立。Zheng等对LLM-as-a-Judge的研究提醒，评委可能受回答位置、长度和自我增强等因素影响；MACST的5样本聚合和方差闸门只能降低一次性随机性，不能声称消除系统性偏差。LangGraph官方定位是长时、状态化Agent的编排运行时；本项目在其上增加测量蓝图和AgentView约束，这部分是任务层工程设计。", "BodyCN"),
           table([
-              ["比较维度", "一般LLM聊天/单评委", "MAAT实现", "可核验位置"],
+              ["比较维度", "一般LLM聊天/单评委", "MACST实现", "可核验位置"],
               ["动态追问", "依赖模型自由发挥", "Director根据未覆盖槽位选择下一步", "slotTracker.service.ts / orchestrator.service.ts"],
               ["信息泄漏", "提示词内常混入全部上下文", "NPC视图不含rubric、user_progress、evaluation_notes", "agentView.service.ts + tests"],
               ["证据密度", "对话长但不一定覆盖能力", "每情境16槽位、8维度，记录slot状态", "seed.ts / slot-tracker.test.ts"],
@@ -511,7 +511,7 @@ def draw_video_slide(path: Path, index: int, title: str, subtitle: str, bullets:
     cyan = (72, 209, 192)
     blue = (73, 146, 255)
     orange = (246, 166, 77)
-    d.text((70, 46), "MAAT  /  Multi-Agent Assessment Toolkit", font=load_font(20), fill=cyan)
+    d.text((70, 46), "MACST  /  Multi-agent Competency Situational Test", font=load_font(20), fill=cyan)
     d.text((70, 105), title, font=load_font(46, True), fill=white)
     y = 176
     for line in wrap_cn(subtitle, load_font(22), 720, d):
@@ -573,8 +573,8 @@ def draw_video_slide(path: Path, index: int, title: str, subtitle: str, bullets:
 
 def make_video(path: Path):
     slides = [
-        (5, "让一次对话成为可观察的行为证据", "MAAT：面向职场情境的多智能体胜任力测验", ["不是一次性问答，而是连续的情境行为观察"], "flow"),
-        (8, "为什么需要动态情境？", "岗位能力往往出现在澄清、协商、交付和复盘的过程里", ["静态题目能测选择，难测行为链", "MAAT把信息缺口变成下一轮探测"], "flow"),
+        (5, "让一次对话成为可观察的行为证据", "MACST：面向职场情境的多智能体胜任力测验", ["不是一次性问答，而是连续的情境行为观察"], "flow"),
+        (8, "为什么需要动态情境？", "岗位能力往往出现在澄清、协商、交付和复盘的过程里", ["静态题目能测选择，难测行为链", "MACST把信息缺口变成下一轮探测"], "flow"),
         (10, "一场测验：用户与三个角色协作", "领导、同事、客户/下属提供不同刺激；用户必须在有限轮次中行动", ["角色各自拥有受限记忆", "Director根据证据缺口安排下一步"], "flow"),
         (10, "8个维度，16个证据槽位", "把测量蓝图落到运行时：unseen → probed → evidenced → insufficient", ["信息辨识、交付拆解、备选方案、承诺边界", "向上对齐、横向协商、下属赋能、压力表达"], "slots"),
         (10, "信息隔离：让角色像角色一样推理", "NPC看不到rubric、用户进度和其他角色记忆；Judge在最后读取完整证据", ["减少提示泄漏与角色串台", "每个节点只接收完成任务所需的视图"], "flow"),
@@ -582,7 +582,7 @@ def make_video(path: Path):
         (12, "参考研究：推理与测量指标", "项目组提供的N=50验证报告给出初步证据", ["ICC .82；Kappa .79；7日重测总分 r=.81", "Judge维度SD均值 .134；与SJT总分 r=.54", "当前Mock演示与研究指标严格分开"], "report"),
         (9, "从对话回到反馈", "原始行为 → 证据槽位 → 能力维度 → 可行动建议", ["报告保留trace，支持研究复核和人工纠错", "不把结果用于单一招聘、晋升或解聘决策"], "report"),
         (8, "普通CPU也能运行", "React + Node + SQLite；真实模型接API，无Key时显式Mock", ["Windows便携包：127.0.0.1:17863", "源码5情境；便携版为2情境旧快照，材料已声明"], "deploy"),
-        (6, "MAAT：让AI推理更可解释、更可复核", "面向教学、培训与测量研究的职场行为观察原型", ["三个诸葛亮 · 南京师范大学"], "flow"),
+        (6, "MACST：让AI推理更可解释、更可复核", "面向教学、培训与测量研究的职场行为观察原型", ["三个诸葛亮 · 南京师范大学"], "flow"),
     ]
     frames_dir = WORK_DIR / "video_frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
@@ -701,7 +701,7 @@ def make_aux_zip(zip_path: Path, generated: dict[str, Path]):
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
         for file in sorted(staging.rglob("*")):
             if file.is_file():
-                zf.write(file, Path("MAAT其他辅助材料") / file.relative_to(staging))
+                zf.write(file, Path("MACST其他辅助材料") / file.relative_to(staging))
 
 
 def write_root_manifest(files: list[Path]):

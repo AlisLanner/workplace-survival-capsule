@@ -1,4 +1,6 @@
-# MAAT .13 视觉版前端
+> 产品名称：**MACST（Multi-agent Competency Situational Test）**。
+
+# MACST .13 视觉版前端
 
 本目录为接入正式 Express/Prisma 后端的 Next.js 前端，不是旧版静态预览。测评、管理、报告均经同源 `/api` 调用后端；默认前端17927、后端17877。
 

@@ -210,7 +210,7 @@ export function HomePage() {
         <div className="wrap hero-grid">
           <div className="hero-left">
             <span className="kicker" ref={kickerRef} data-reveal>
-              MAAT · Multi-Agent Situational Assessment
+              MACST · Multi-agent Competency Situational Test
             </span>
             <h1
               className="h1 sheen"
@@ -290,7 +290,7 @@ export function HomePage() {
 
       <footer className="footer">
         <div className="wrap footer-inner">
-          <span>MAAT · 情境行为评估系统</span>
+          <span>MACST · 情境行为评估系统</span>
           <span>本地运行 · SQLite 持久化 · Mock / DeepSeek 双模式</span>
         </div>
       </footer>

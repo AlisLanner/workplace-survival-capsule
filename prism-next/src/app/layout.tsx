@@ -6,10 +6,10 @@ import { siteDescription } from "@/lib/content";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || "http://127.0.0.1:17926"),
-  title: { default:"MAAT · 看见能力的不同侧面", template:"%s · MAAT" },
+  title: { default:"MACST · 看见能力的不同侧面", template:"%s · MACST" },
   description:siteDescription,
-  applicationName:"MAAT",
-  openGraph:{title:"MAAT · 看见能力的不同侧面",description:siteDescription,locale:"zh_CN",type:"website"},
+  applicationName:"MACST",
+  openGraph:{title:"MACST · 看见能力的不同侧面",description:siteDescription,locale:"zh_CN",type:"website"},
   robots:{index:true,follow:true},
 };
 export default function RootLayout({children}:{children:React.ReactNode}) {
