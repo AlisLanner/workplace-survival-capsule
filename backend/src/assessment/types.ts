@@ -1,4 +1,5 @@
 import type { AgentName } from "../types/agent";
+import type { DimensionWeights, WeightedScores } from "./weights";
 
 export type DimensionId = `GE0${1|2|3|4|5|6|7|8}`;
 export type Sufficiency = "none" | "partial" | "sufficient";
@@ -20,6 +21,8 @@ export interface Definition {
   scoring_policy: { samples: number; total_variance_limit: number; dimension_range_limit: number; bands: string[]; boundaries: string[]; evidence_policy?:"response-quality/1" };
   anchors: Array<{ dimension_id: DimensionId; low: string; middle: string; high: string; missing: string }>;
   prompt_bundle_version: string;
+  /** 八维权重（会话开始时由场景配置并入并随快照冻结；缺省等权）。 */
+  dimension_weights?: DimensionWeights;
 }
 export interface Evidence {
   slot_id: string; message_id: string; quote: string; sufficiency: Sufficiency; valence: Valence; reason: string;
@@ -68,6 +71,8 @@ export interface Ge8Report {
   assessment_version: string; schema_version: string; scenario_id: string;
   dimension_results: DimensionResult[]; dimension_scores: Record<string, number>;
   dimension_analysis: Record<string, string>; total_score: number|null;
+  /** 按岗位权重加权合成的总分（0—160，等权时与简单加和一致）；八维未全部评出时为 null。 */
+  weighted_scores?: WeightedScores|null;
   radar_chart_data: Array<{name: string;score: number;max: number}>;
   report_status: "confident"|"provisional"|"unratable"|"debug"|"scoring_failed";
   level: string; summary: string; conflict_style: string;

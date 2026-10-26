@@ -4,6 +4,7 @@ import { findNpcBoundaryViolation } from "../utils/npcBoundaryGuard";
 import { strictJson } from "./strictJson";
 import { agentView, locateEvidence } from "./coverage";
 import type { Evidence, Ge8State, Probe, Snapshot, TranscriptMessage } from "./types";
+import { composeRoleSpeech, ownVoice, spokenFact } from "./roleSpeech";
 
 async function jsonCall(s:Snapshot,key:string,kind:"director"|"npc"|"guard",input:unknown,check:(x:any)=>unknown):Promise<any> {
   const p=s.model[kind];let failure:unknown;
@@ -53,12 +54,15 @@ export async function guard(s:Snapshot,state:Ge8State,probe:Probe,messages:Trans
 }
 export function canonicalReply(s:Snapshot,probe:Probe) {
   const p=s.definition.roles[probe.agent];
-  return {speaker:p.name,role:p.role,content:[...probe.facts.map(f=>f.text),...probe.questions].join("\n")||"请继续说明你当前的判断和下一步。"};
+  const facts=probe.facts.map(f=>spokenFact(f.text,p.name,s.definition.public_facts.some(item=>item.id===f.id)));
+  return {speaker:p.name,role:p.role,content:composeRoleSpeech(facts,probe.questions)};
 }
 export async function npc(s:Snapshot,state:Ge8State,probe:Probe,messages:TranscriptMessage[]) {
   const canonical=canonicalReply(s,probe);
   if(s.model.mock)return canonical;
-  const result=await jsonCall(s,probe.agent,"npc",agentView("npc",s.definition,state,probe,messages),x=>{
+  const requiredStatements=probe.facts.map(f=>spokenFact(f.text,canonical.speaker,s.definition.public_facts.some(item=>item.id===f.id)));
+  const input={...agentView("npc",s.definition,state,probe,messages),speech_style:{perspective:"直接以角色第一人称和候选人对话，不要第三人称旁白或重复交代同一事件。",required_statements:requiredStatements,instruction:"将required_statements原文各整合一次，再提出probe中的中性问题；不得更改事实、权限、时间和不确定性。"}};
+  const result=await jsonCall(s,probe.agent,"npc",input,x=>{
     const r=x?.visible_reply;
     if(r?.speaker!==canonical.speaker || r?.role!==canonical.role || typeof r.content!=="string" || !r.content.trim())throw new Error("角色身份或输出无效");
     if(/GE0[1-8]|评分|高分|低分|维度|满分|正确答案|过关|你应该|建议你/.test(r.content))throw new Error("角色回复泄露评分或替候选人作答");
@@ -66,8 +70,10 @@ export async function npc(s:Snapshot,state:Ge8State,probe:Probe,messages:Transcr
     const allowedFacts=[...s.definition.public_facts,...Object.values(s.definition.role_facts).flat().filter(f=>state.released_facts[f.id]),...s.definition.role_facts[probe.agent],...probe.facts].map(f=>f.text).join(" ");
     const numbers=r.content.match(/\d+(?:\.\d+)?/g)??[];
     if(numbers.some((n:string)=>!allowedFacts.includes(n)))throw new Error("角色编造了未获准的数值");
-    // Canonical facts/questions are appended verbatim to guarantee the opportunity recorded really arrived.
-    return {speaker:canonical.speaker,role:canonical.role,content:[...probe.facts.map(f=>f.text),r.content,...probe.questions.filter(q=>!r.content.includes(q))].join("\n")};
+    // Deliver every fact in its deterministic spoken form before marking its ID released.
+    // Drop verbatim narrator lines if a model echoes the raw probe instead of its speech projection.
+    const draft=ownVoice(r.content.split("\n").filter((line:string)=>!probe.facts.some(f=>line.trim()===f.text)).join("\n"),canonical.speaker);
+    return {speaker:canonical.speaker,role:canonical.role,content:composeRoleSpeech(requiredStatements,probe.questions,draft)};
   });
   return result;
 }

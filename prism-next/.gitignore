@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.pnpm-store/
+.pnpm-cache/
+.pnpm-state/
+*.tsbuildinfo
+.env*
+!.env.example
+_核对/

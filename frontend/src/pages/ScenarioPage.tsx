@@ -33,6 +33,8 @@ export function ScenarioPage() {
   const [startingId, setStartingId] = useState<string | null>(null);
   const [nickname, setNickname] = useState(getStoredNickname);
   const [nicknameError, setNicknameError] = useState(false);
+  const nicknameBarRef = useRef<HTMLDivElement | null>(null);
+  const nicknameInputRef = useRef<HTMLInputElement | null>(null);
 
   const gridRef = useRef<HTMLDivElement | null>(null);
   useSpotlight();
@@ -85,7 +87,10 @@ export function ScenarioPage() {
   async function start(scenarioId: string) {
     const trimmedNickname = nickname.trim();
     if (!trimmedNickname) {
+      // 未填昵称：滚动到昵称栏并聚焦，给出明确提示，避免被误认为系统卡顿。
       setNicknameError(true);
+      nicknameBarRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => nicknameInputRef.current?.focus({ preventScroll: true }), 350);
       return;
     }
 
@@ -115,19 +120,23 @@ export function ScenarioPage() {
         </p>
       </div>
 
-      <div className="nickname-bar glass" data-reveal ref={nickRef}>
-        <label htmlFor="nickname">你的昵称</label>
-        <input
-          id="nickname"
-          type="text"
-          value={nickname}
-          onChange={(e) => handleNicknameChange(e.target.value)}
-          placeholder="评估中显示的名字"
-          maxLength={16}
-        />
-        {nicknameError ? <span className="nickname-error">请先输入昵称</span> : null}
+      <div data-reveal ref={nickRef}>
+        <div ref={nicknameBarRef} className={`nickname-bar glass ${nicknameError ? "error shake" : ""}`}>
+          <label htmlFor="nickname">
+            你的昵称 <b className="required">*</b>
+          </label>
+          <input
+            id="nickname"
+            ref={nicknameInputRef}
+            type="text"
+            value={nickname}
+            onChange={(e) => handleNicknameChange(e.target.value)}
+            placeholder="请先填写昵称，再开始评估"
+            maxLength={16}
+          />
+          {nicknameError ? <span className="nickname-error">请先填写昵称再开始评估</span> : <span className="nickname-hint">昵称用于区分会话记录</span>}
+        </div>
       </div>
-      <p className="nickname-hint">昵称用于区分会话记录</p>
 
       {loading ? <p className="loading">加载评估情境中…</p> : null}
       {error ? <p className="error-box">{error}</p> : null}

@@ -221,7 +221,13 @@ export function ChatPage() {
   }, []);
 
   const maxRound = scenario?.maxRound ?? DEFAULT_MAX_ROUND;
-  const statusText = detail?.session.status === "finished" ? "评估已结束" : sending ? "对方正在组织回复" : "评估进行中";
+  const statusText =
+    detail?.session.status === "finished" ? "评估已结束"
+      : detail?.session.status === "abandoned" ? "评估已中断"
+        : detail?.session.status === "scoring" ? "评分进行中"
+          : sending ? "对方正在组织回复"
+            : "评估进行中";
+  const roundPercent = Math.min(100, Math.round((currentRound / maxRound) * 100));
   const presentation = getScenarioPresentation(scenario);
   const reportProgressPercent = clampProgressPercent(reportProgress?.percent);
   const reportProgressNow = useMemo(() => Date.now(), [reportProgressTick, reportProgress?.receivedAt]);
@@ -500,7 +506,7 @@ export function ChatPage() {
     <main className="wrap chat-wrap">
       {timeWarning ? <div className="time-warning-overlay" /> : null}
       <header className="scene-head">
-        <div>
+        <div className="scene-head-main">
           <h2 className="h2">{scenario?.title ?? "评估会话"}</h2>
           <div className="sub">
             <span className="live-dot" />
@@ -508,9 +514,19 @@ export function ChatPage() {
           </div>
         </div>
         <span className="kicker">Assessment · Live</span>
+        <div className="round-track" aria-hidden="true">
+          <div className="fill" style={{ width: `${roundPercent}%` }} />
+        </div>
       </header>
 
       <div className="thread" aria-live="polite">
+        {detail && detail.session.status === "abandoned" ? (
+          <div className="glass" role="status" style={{ padding: 18 }}>
+            <p>本次评估因长时间未作答已中断，对话记录已保留。</p>
+            <p className="small muted">如需重新评估，请返回“评估情境”页重新开始；中断的会话不再继续计分。</p>
+            <Link className="btn" to="/scenarios">返回评估情境</Link>
+          </div>
+        ) : null}
         {visibleMessages.map((message, index) => (
           <div
             key={message.id}

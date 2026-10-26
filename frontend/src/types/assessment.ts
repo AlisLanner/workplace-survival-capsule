@@ -100,6 +100,21 @@ export interface Report {
   review_reasons?: string[];
   assessment_meta?: Record<string,unknown>;
   total_score: number|null;
+  weighted_scores?: {
+    method: string;
+    weights: {
+      mode: string;
+      weights: Record<string, number>;
+      importance?: Record<string, number>;
+      free_text?: Record<string, string>;
+      note?: string;
+      updated_at: string;
+    };
+    contributions: Array<{ id: string; name: string; score: number; weight: number; weighted_score: number }>;
+    weighted_total: number;
+    weighted_percent: number;
+    note: string;
+  } | null;
   level: string;
   dimension_scores: Record<string, number>;
   dimension_analysis: Record<string, string>;

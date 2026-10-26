@@ -89,7 +89,7 @@ const AssessmentGraphAnnotation = Annotation.Root({
 
 type InternalAssessmentGraphState = typeof AssessmentGraphAnnotation.State;
 
-type RuntimeScenario = Omit<Scenario, "groupChatRounds" | "openingMessageJson" | "initialBlackboardJson" | "assessmentDefinitionJson"> & {
+type RuntimeScenario = Omit<Scenario, "groupChatRounds" | "openingMessageJson" | "initialBlackboardJson" | "assessmentDefinitionJson" | "briefJson" | "dimensionWeightsJson"> & {
   groupChatRounds: number[];
 };
 

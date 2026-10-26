@@ -8,8 +8,10 @@ import { coverage, delivered, initialState, nextProbe, publicState, recordEviden
 import { getDefinition, hash, SCHEMA } from "./definitions";
 import { judge } from "./judge";
 import { createSnapshot, readSnapshot } from "./runtime";
+import { isCustomVersion, validateCustomDefinition } from "./customScenario";
+import { equalWeights, validateWeights, type DimensionWeights } from "./weights";
 import type { Definition, Ge8Report, Ge8State, Snapshot, TranscriptMessage } from "./types";
-import { normalizeScenario, normalizeTraceEvent } from "../utils/jsonField";
+import { normalizeScenario, normalizeTraceEvent, parseJsonField } from "../utils/jsonField";
 import { callContext } from "./audit";
 import { legacyScenario } from "./legacy";
 
@@ -17,9 +19,19 @@ export async function startGe8(scenarioId:string,input:{user_id?:string;nickname
   return prisma.$transaction(async tx=>{
     const scenario=await tx.scenario.findUniqueOrThrow({where:{id:scenarioId}});
     if(scenario.status!=="active" || !scenario.assessmentVersion)throw new Error("测评情境未启用新版");
-    getDefinition(scenario.id,scenario.assessmentVersion); // Reject unknown versions; never infer A.
     const d=JSON.parse(scenario.assessmentDefinitionJson??"null") as Definition;
-    if(!d || d.scenario_id!==scenario.id || d.assessment_version!==scenario.assessmentVersion || hash(d)!==hash(getDefinition(scenario.id,scenario.assessmentVersion)))throw new Error("已安装定义与版本不匹配，请核对安装记录");
+    if(isCustomVersion(scenario.assessmentVersion)){
+      // 使用者自助生成的自定义情境：结构终检代替与源码编译定义的哈希比对。
+      if(!d || d.scenario_id!==scenario.id || d.assessment_version!==scenario.assessmentVersion)throw new Error("自定义定义与场景记录不匹配，请在管理端重新生成");
+      validateCustomDefinition(d);
+    } else {
+      getDefinition(scenario.id,scenario.assessmentVersion); // Reject unknown versions; never infer A.
+      if(!d || d.scenario_id!==scenario.id || d.assessment_version!==scenario.assessmentVersion || hash(d)!==hash(getDefinition(scenario.id,scenario.assessmentVersion)))throw new Error("已安装定义与版本不匹配，请核对安装记录");
+    }
+    // 会话开始时把场景上的权重配置并入定义，随快照冻结；未配置则等权（与旧版口径一致）。
+    const weights=parseJsonField<DimensionWeights|null>(scenario.dimensionWeightsJson,null)??equalWeights();
+    validateWeights(weights);
+    d.dimension_weights=weights;
     const rounds=JSON.parse(scenario.groupChatRounds);
     if(!Array.isArray(rounds) || rounds.some(x=>!Number.isInteger(x) || x<1))throw new Error("守护轮次配置无效");
     const snapshot=await createSnapshot(tx,d,{group_chat_enabled:scenario.groupChatEnabled,group_chat_rounds:rounds});const state=initialState(snapshot.definition);
@@ -74,12 +86,15 @@ export async function runGe8(id:string,content:string,events?:StreamingTurnEvent
     const graph=new StateGraph(ann)
       .addNode("responseQualityGate",node("responseQualityGate",async()=>{
         expired=evaluateResponseQuality(pending?session.messages.filter(m=>m.id!==last!.id):session.messages,content).shouldTerminate;
-        if(pending)return; // Resume the saved turn; do not insert the answer or consume another round.
-        state.round=session.round+1;
-        const m=await prisma.$transaction(async tx=>{
+        if(!pending){ // Resume a saved turn without inserting the answer or consuming another round.
+          state.round=session.round+1;
+          const m=await prisma.$transaction(async tx=>{
           const m=await tx.message.create({data:{sessionId:id,senderType:expired?"system":"user",senderName:expired?"计时系统":"候选人",content,roundIndex:state.round}});
           await tx.assessmentSession.update({where:{id},data:{round:state.round,blackboardState:JSON.stringify(state)}});return m;
-        });messages.push(m);
+          });messages.push(m);
+        }
+        // The final answer ends dialogue before Director's extraction, which may take time.
+        if(expired || state.round>=state.max_round)events?.onReportProgress?.({stage:"preparing",percent:2,message:"作答已结束，正在整理最后一条回应和计分材料。"});
       }))
       .addNode("director",node("director",async()=>{
         if(expired){finish=true;return;}

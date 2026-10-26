@@ -5,6 +5,7 @@ import { strictJson } from "./strictJson";
 import { answeredOpportunities, usesResponseQuality } from "./responseQuality";
 import { publicMeta } from "./runtime";
 import { candidateCatalog, decodeJudgeRanges, EVIDENCE_PROTOCOL, evidenceProtocolHash, EvidenceProtocolError, protocolForVersion } from "./evidenceProtocol";
+import { weightedScores } from "./weights";
 import type { Definition, DimensionResult, Evidence, Ge8Report, Ge8State, SlotResult, Snapshot, TranscriptMessage } from "./types";
 
 export interface JudgeSample { dimension_results:DimensionResult[] }
@@ -111,8 +112,12 @@ export function aggregateSamples(samples:JudgeSample[],snapshot:Snapshot,state:G
   // The Judge may correct missed Director evidence only through validated per-slot citations.
   const status=technical?"scoring_failed":snapshot.model.mock?"debug":!c.covered_dimensions.length?"unratable":!c.complete?"provisional":review.includes("total_variance_limit")?"unratable":review.length?"provisional":"confident";
   const scores=Object.fromEntries(results.filter(r=>r.status==="rated").map(r=>[r.name,r.score!]));
+  // 加权合成总分与 total_score 同口径：仅在 confident 时输出，缺失维度不合成。
+  const weighted=weightedScores(results,d.dimension_weights);
   return {assessment_version:d.assessment_version,schema_version:d.schema_version,scenario_id:d.scenario_id,dimension_results:results,dimension_scores:scores,dimension_analysis:Object.fromEntries(results.map(r=>[r.name,r.analysis])),
-    total_score:status==="confident"?Object.values(scores).reduce((a,b)=>a+b,0):null,radar_chart_data:c.complete?results.map(r=>({name:r.name,score:r.score!,max:20})):[],
+    total_score:status==="confident"?Object.values(scores).reduce((a,b)=>a+b,0):null,
+    weighted_scores:status==="confident"?weighted:null,
+    radar_chart_data:c.complete?results.map(r=>({name:r.name,score:r.score!,max:20})):[],
     report_status:status,level:"本次行为观察",summary:`本情境八维中${c.covered_dimensions.length}维具有五份合法的可评分结果。${snapshot.model.mock?"本报告由模拟器生成，仅用于程序检查。":"结果仅表示本次情境中的判断和行为表达。"}`,
     conflict_style:"仅依据本情境原话描述，不作人格诊断。",strengths:[],risks:review,suggestions:["结合逐点原话和任务条件进行人工复核。"],final_recommendation:"本结果为人工面试和复核提供线索，不设置招聘淘汰线；新旧版本及跨情境分数不能直接比较。",
     evidence:results.flatMap(r=>r.slot_results.flatMap(s=>s.evidence.map(e=>({dimension:r.name,message_id:e.message_id,quote:e.quote,analysis:e.reason})))),

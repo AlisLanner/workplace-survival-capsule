@@ -37,18 +37,26 @@
 .scn-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-top:8px;gap:14px;flex-wrap:wrap;}
 
 /* ===== 昵称条(进入评估前命名) ===== */
+/* 外层仅承载滚动显现动画（类名稳定，避免React重渲染抹掉观察器加的.in）；卡片与报错态在内层。 */
 .nickname-bar{
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:16px 20px;background:var(--glass);border:1px solid var(--glass-brd);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%;
+  padding:18px 22px;background:var(--glass);border:1px solid rgba(227,195,126,.45);
   border-radius:var(--r-md);margin-top:14px;
+  box-shadow:0 10px 34px -18px rgba(227,195,126,.35);
+  transition:border-color .25s,box-shadow .25s;
 }
-.nickname-bar label{font-size:13.5px;color:var(--ink-2);display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.nickname-bar label{font-size:14.5px;color:var(--ink);display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:600;}
+.nickname-bar label .required{color:var(--gold);font-size:16px;}
 .nickname-bar input{
-  flex:1;min-width:180px;background:rgba(0,0,0,.25);border:1px solid var(--line);
-  border-radius:var(--r-sm);padding:10px 14px;font-family:var(--body);font-size:14px;color:var(--ink);
+  flex:1;min-width:200px;background:rgba(0,0,0,.3);border:1.5px solid rgba(227,195,126,.5);
+  border-radius:var(--r-sm);padding:11px 16px;font-family:var(--body);font-size:15px;color:var(--ink);
   transition:border-color .25s,box-shadow .25s;
 }
 .nickname-bar input::placeholder{color:var(--ink-3);}
-.nickname-bar input:focus{outline:none;border-color:rgba(227,195,126,.6);box-shadow:0 0 0 4px rgba(227,195,126,.12);}
+.nickname-bar input:focus{outline:none;border-color:rgba(227,195,126,.85);box-shadow:0 0 0 4px rgba(227,195,126,.16);}
 .nickname-hint{font-size:12px;color:var(--ink-3);white-space:nowrap;}
-.nickname-error{font-size:12px;color:var(--bad);white-space:nowrap;}
+.nickname-error{font-size:13px;color:var(--bad);white-space:nowrap;font-weight:600;}
+.nickname-bar.error{border-color:rgba(214,88,68,.75);box-shadow:0 0 0 4px rgba(214,88,68,.14);}
+.nickname-bar.error input{border-color:rgba(214,88,68,.75);}
+.nickname-bar.shake{animation:shakeX .5s var(--ease);}
+@keyframes shakeX{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}

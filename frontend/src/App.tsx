@@ -10,6 +10,8 @@ const ReportPage = lazy(() => import("./pages/ReportPage").then((m) => ({ defaul
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })));
 const DashboardPage = lazy(() => import("./pages/admin/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const ScenariosPage = lazy(() => import("./pages/admin/ScenariosPage").then((m) => ({ default: m.ScenariosPage })));
+const ScenarioWizardPage = lazy(() => import("./pages/admin/ScenarioWizardPage").then((m) => ({ default: m.ScenarioWizardPage })));
+const ScenarioDetailPage = lazy(() => import("./pages/admin/ScenarioDetailPage").then((m) => ({ default: m.ScenarioDetailPage })));
 const PromptsPage = lazy(() => import("./pages/admin/PromptsPage").then((m) => ({ default: m.PromptsPage })));
 const SessionsPage = lazy(() => import("./pages/admin/SessionsPage").then((m) => ({ default: m.SessionsPage })));
 const SessionDetailPage = lazy(() =>
@@ -55,6 +57,8 @@ export function App() {
           <Route path="/admin" element={<AdminGate><AdminLayout /></AdminGate>}>
             <Route index element={<DashboardPage />} />
             <Route path="scenarios" element={<ScenariosPage />} />
+            <Route path="scenarios/new" element={<ScenarioWizardPage />} />
+            <Route path="scenarios/:id" element={<ScenarioDetailPage />} />
             <Route path="prompts" element={<PromptsPage />} />
             <Route path="sessions" element={<SessionsPage />} />
             <Route path="sessions/:id" element={<SessionDetailPage />} />

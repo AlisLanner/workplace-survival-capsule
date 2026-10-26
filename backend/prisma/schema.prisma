@@ -28,6 +28,9 @@ model Scenario {
   status            String   @default("active")
   assessmentVersion String?
   assessmentDefinitionJson String?
+  origin            String?  // builtin=内置正式情境；custom=使用者向导生成；null=旧版简单场景
+  briefJson         String?  // 向导创建时的用户简报存档，用于追溯与再生成
+  dimensionWeightsJson String? // 八维权重配置（重要性/权重/大白话），会话开始时并入冻结快照
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

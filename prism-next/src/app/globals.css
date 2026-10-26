@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: #080e18;
+  --color-foreground: #f2f6ff;
+  --color-card: #122033;
+  --color-card-foreground: #edf4ff;
+  --color-popover: #132238;
+  --color-popover-foreground: #edf4ff;
+  --color-primary: #85d1ff;
+  --color-primary-foreground: #071725;
+  --color-secondary: #1c334d;
+  --color-secondary-foreground: #e7f2ff;
+  --color-muted: #172638;
+  --color-muted-foreground: #b5c8e1;
+  --color-accent: #253f5b;
+  --color-accent-foreground: #f1f7ff;
+  --color-destructive: #ffa2a2;
+  --color-destructive-foreground: #160f11;
+  --color-border: #405b79;
+  --color-input: #587597;
+  --color-ring: #85d1ff;
+  /* Slate is used for reading text across all pages, including old tertiary labels.
+     Keep its darkest surface/ink shades dark; give every text shade a readable floor. */
+  --color-slate-100: #f3f7ff;
+  --color-slate-200: #e7effb;
+  --color-slate-300: #d5e3f5;
+  --color-slate-400: #c0d2eb;
+  --color-slate-500: #acc3e0;
+  --color-slate-600: #9bb4d4;
+  --color-slate-700: #88a5c9;
+  --color-slate-800: #273b53;
+  --color-slate-900: #101d2e;
+  --color-slate-950: #061220;
+  --radius-sm: .375rem;
+  --radius-md: .625rem;
+  --radius-lg: .875rem;
+  --radius-xl: 1.25rem;
+  --font-sans: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, monospace;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body { background: var(--color-background); color: var(--color-foreground); }
+  ::selection { background: #28639b; color: #ffffff; }
+  :focus-visible { outline: 2px solid var(--color-ring); outline-offset: 3px; }
+}

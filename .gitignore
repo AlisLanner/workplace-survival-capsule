@@ -41,3 +41,8 @@ docs/competition-editing/
 *.sqlite3-*
 logs/
 .local-data/
+
+# Next visual frontend and local-only runtime
+.next/
+.pnpm*/
+开发工具/visual-service/

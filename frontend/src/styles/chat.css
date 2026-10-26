@@ -2,11 +2,27 @@
    chat.css — 评估对话 / 消息流 / 阶段条 / 输入区 / 计时 / 报告进度
    ============================================================ */
 
-.chat-wrap{max-width:880px;margin:0 auto;padding:56px 0 100px;}
+.chat-wrap{max-width:880px;margin:0 auto;padding:20px 0 100px;}
 
-/* ===== 场景头 ===== */
-.scene-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:22px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+/* ===== 场景头（固定在页面顶部，滚动时始终可见标题与轮次） ===== */
+.scene-head{
+  position:sticky;top:0;z-index:60;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+  padding:16px 18px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap;
+  margin:0 -18px;
+  background:rgba(12,13,17,.82);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-radius:0 0 var(--r-md) var(--r-md);
+}
+.scene-head .scene-head-main{min-width:0;}
 .scene-head .sub{font-size:13px;color:var(--ink-2);margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.scene-head .round-track{
+  flex-basis:100%;height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px;
+}
+.scene-head .round-track .fill{
+  height:100%;border-radius:2px;background:linear-gradient(90deg,#3E8E7E,var(--teal));
+  transition:width .6s var(--ease);
+}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:pulse 1.6s infinite;display:inline-block;flex:none;}
 
 /* ===== 消息流 ===== */

@@ -21,7 +21,14 @@ export function normalizeScenario<
     initialBlackboardJson?: string | null;
   }
 >(scenario: T) {
-  const { openingMessageJson, initialBlackboardJson: _initialBlackboardJson, assessmentDefinitionJson: _definition, ...publicScenario } = scenario as T & { assessmentDefinitionJson?:string|null };
+  const {
+    openingMessageJson,
+    initialBlackboardJson: _initialBlackboardJson,
+    assessmentDefinitionJson: _definition,
+    briefJson: _brief,
+    dimensionWeightsJson: _dimensionWeights,
+    ...publicScenario
+  } = scenario as T & { assessmentDefinitionJson?:string|null;briefJson?:string|null;dimensionWeightsJson?:string|null };
 
   return {
     ...publicScenario,

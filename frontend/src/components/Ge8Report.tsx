@@ -18,6 +18,24 @@ export function Ge8Report({report,messages=[]}:{report:Report;messages?:Message[
       {report.report_status==="scoring_failed"?<p role="status">评分服务未能完成有效计算，回答已保存；这属于技术问题，不代表作答差或成绩低。</p>:dims.some(d=>d.status==="insufficient")?<p className="small muted">证据不足表示暂时无法作出判断，不按0分计算，也不等同于低分。</p>:null}
       <p><strong>{report.total_score===null?"总分暂不报告":`${report.total_score} / 160`}</strong></p>
       <p className="muted">总分仅为本情境描述性汇总；不同情境、新旧版本不直接比较，不设招聘淘汰线。</p>
+      {report.weighted_scores?(
+        <div className="weighted-box">
+          <p><strong>按岗位权重加权：{report.weighted_scores.weighted_total} / 160（{report.weighted_scores.weighted_percent}%）</strong></p>
+          <p className="small muted">
+            加权规则：{report.weighted_scores.note ?? "加权总分 = 8 × Σ(维度权重 × 维度得分)，量尺0—160。"}
+            {report.weighted_scores.weights.mode==="equal"?" 本场景未单独设置权重（八维等权）。":""}
+          </p>
+          <div className="weighted-bars">
+            {report.weighted_scores.contributions.map((c)=>(
+              <div className="dbar" key={c.id}>
+                <span className="name">{c.name} <span className="small muted">权重{(c.weight*100).toFixed(1)}%</span></span>
+                <div className="track"><div className="fill" style={{width:`${Math.min(100,(c.weighted_score/2)*100)}%`}} /></div>
+                <span className="val">{c.score}/20 → 贡献 {c.weighted_score.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ):null}
       {report.review_reasons?.length?<p className="small">复核原因：{report.review_reasons.map(reviewLabel).join("；")}</p>:null}
       {complete?<div style={{maxWidth:460,margin:"0 auto"}}><RadarChart data={dims.map(d=>({name:d.name,score:d.score!,max:20}))}/></div>:<p className="muted">存在未评分维度，暂不绘制完整雷达图。</p>}
       {typeof report.sampling_stats?.variance==="number"&&Number.isFinite(report.sampling_stats.variance)?<p className="small muted">五次评分总分方差 {Number(report.sampling_stats.variance.toFixed(2))}。重复评分稳定性不代表测量效度。</p>:null}
